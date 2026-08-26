@@ -1,5 +1,5 @@
-# Sample workflow for building and deploying a Jekyll site to GitHub Pages
-name: Deploy Jekyll with GitHub Pages dependencies preinstalled
+name: Deploy Jekyll site to GitHub Pages
+
 on:
   push:
     branches: [main]
@@ -17,8 +17,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - name: Check out source
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Configure GitHub Pages
@@ -27,7 +28,7 @@ jobs:
       - name: Build Jekyll site
         uses: actions/jekyll-build-pages@v1
         with:
-          source: ./
+          source: .
           destination: ./_site
 
       - name: Upload Pages artifact
@@ -36,6 +37,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
