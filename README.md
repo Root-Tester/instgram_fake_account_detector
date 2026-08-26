@@ -71,6 +71,18 @@ Open the browser at:
 http://127.0.0.1:8502
 ```
 
+## Deploy the app
+
+GitHub Pages can only serve the static launch page; it cannot run Python or
+Streamlit. To run the interactive app, create a Render web service from this
+repository and use the included `render.yaml` blueprint. Render runs
+`run_app.sh`, which binds Streamlit to the host and port supplied by the
+platform.
+
+After the service is live, set the GitHub repository variable
+`STREAMLIT_APP_URL` to its public URL. The GitHub Pages launch page will then
+open the running Streamlit app.
+
 ## Quality checks
 
 Install the development dependencies and run the same checks used by GitHub Actions:

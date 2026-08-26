@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
 cd "$(dirname "$0")"
-pkill -f 'python -m streamlit run app.py' || true
-sleep 1
-python -m streamlit run app.py
+exec python -m streamlit run app.py \
+	--server.headless true \
+	--server.address "${HOST:-0.0.0.0}" \
+	--server.port "${PORT:-8501}"
