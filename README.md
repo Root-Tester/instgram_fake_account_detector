@@ -27,6 +27,8 @@ Post content also supports supervised training. The optional model uses TF-IDF w
 
 The script prints held-out accuracy, ROC AUC, and a classification report. When `post_content_model.joblib` exists, Post Analysis displays its fake probability and combines it with the transparent content rules. A model trained on a small or biased dataset is not reliable; use independently reviewed examples and keep real and fake classes represented.
 
+The repository includes `post_training_dataset.jsonl` with 50,000 synthetic development rows and `generate_post_dataset.py` to reproduce it. It is balanced between 25,000 real-appearing and 25,000 fake-appearing template examples. Its perfect validation score reflects the artificial templates, not real-world performance; replace it with independently reviewed post data before making operational decisions.
+
 Blockchain data cannot identify the person behind a wallet or prove that an image was first posted on Instagram. The report links to explorers and records these limitations. Proving image provenance requires a registered hash/provenance record from an external service, which this app does not invent.
 
 The original XGBoost model remains compatible with its 19 trained features. Advanced signals are combined after supervised inference, so enrichment does not silently change the meaning of the shipped model.
