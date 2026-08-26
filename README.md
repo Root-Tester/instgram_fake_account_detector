@@ -61,7 +61,7 @@ It is designed as a lightweight batch-analysis tool for reviewing one or many pr
 From the project directory:
 
 ```bash
-cd /workspaces/codespaces-blank/instgram_fake_account_detector
+cd /workspaces/codespaces-blank/instgram-fake-account-detector
 ./.venv/bin/python -m streamlit run app.py --server.headless true --server.address 127.0.0.1 --server.port 8502
 ```
 
@@ -70,25 +70,6 @@ Open the browser at:
 ```text
 http://127.0.0.1:8502
 ```
-
-## Deployment layout
-
-- **Frontend:** `app.py` and `ui.py` provide the Streamlit account and Post Analysis tabs. `index.html` is the optional GitHub Pages launch page.
-- **Backend:** `predictor.py`, `advanced_analysis.py`, `post_analysis.py`, and `post_model.py` perform inference and research. Model files remain local to the running Streamlit service.
-- **Configuration:** `run_app.sh` reads optional `.env` values for `HOST`, `PORT`, `PYTHON_BIN`, and research API keys. Copy `.env.example` to `.env` for local deployment settings, then run `bash run_app.sh`.
-- **GitHub Pages:** `.github/workflows/jekyll-gh-pages.yml` deploys the static launch page. Set the repository variable `STREAMLIT_APP_URL` to the public URL of the Streamlit backend; GitHub Pages cannot execute the Python backend itself.
-
-## Deploy the app
-
-GitHub Pages can only serve the static launch page; it cannot run Python or
-Streamlit. To run the interactive app, create a Render web service from this
-repository and use the included `render.yaml` blueprint. Render runs
-`run_app.sh`, which binds Streamlit to the host and port supplied by the
-platform.
-
-After the service is live, set the GitHub repository variable
-`STREAMLIT_APP_URL` to its public URL. The GitHub Pages launch page will then
-open the running Streamlit app.
 
 ## Quality checks
 
