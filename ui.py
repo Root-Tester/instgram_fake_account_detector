@@ -1,6 +1,7 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 
+from post_analysis import analyze_post
 from config import SAMPLE_PATH
 from data_io import load_json_file, load_json_from_text, load_sample_json, normalize_profiles
 from validators import PROFILE_EXAMPLE, validate_profile_data
@@ -76,17 +77,6 @@ def render_inputs() -> list[dict] | None:
             if batch_profiles:
                 payload = batch_profiles
 
-        image_files = st.file_uploader(
-            "Optional profile images, in the same order as the JSON profiles",
-            type=["jpg", "jpeg", "png", "webp"],
-            accept_multiple_files=True,
-            help="Images are analyzed locally. They are not uploaded to a reverse-image-search service.",
-        )
-        if image_files and payload:
-            for profile_data, image_file in zip(payload, image_files):
-                profile_data["_image_bytes"] = image_file.getvalue()
-            st.info(f"Attached {min(len(image_files), len(payload))} local image(s) to the batch.")
-
     with tab3:
         if SAMPLE_PATH.exists():
             if st.checkbox("Load sample.json", value=False):
@@ -113,6 +103,61 @@ def render_inputs() -> list[dict] | None:
         return None
 
     return validated_profiles
+
+
+def render_post_analysis() -> None:
+    st.subheader("Post Analysis")
+    st.write("Research a public Instagram post, reel, or video URL using available public metadata and search providers.")
+    post_url = st.text_input(
+        "Instagram post link",
+        placeholder="https://www.instagram.com/p/POST_ID/",
+        help="Only public pages that Instagram makes available without login can be analyzed.",
+    )
+    st.caption("Online research uses bounded public requests. Private posts, login walls, and platform controls are not bypassed.")
+    if st.button("Run Post Analysis", type="primary", disabled=not post_url.strip(), use_container_width=True):
+        with st.spinner("Fetching public post metadata and researching sources..."):
+            try:
+                result = analyze_post(post_url)
+            except ValueError as exc:
+                st.error(str(exc))
+                return
+
+        post = result["post"]
+        if not post.get("accessible"):
+            st.error(post.get("error", "The public post metadata was unavailable."))
+            st.json(result)
+            return
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Research status", result["research_status"].title())
+        col2.metric("Wallets found", len(result["blockchain"]["addresses_found"]))
+        col3.metric("Image risk", f"{result['image_analysis'].get('image_risk', 0):.1%}")
+
+        if post.get("image_url"):
+            st.image(post["image_url"], caption="Public post image", width="stretch")
+        st.markdown(f"**{post.get('title') or 'Instagram post'}**")
+        st.write(post.get("description") or "No public caption metadata was available.")
+
+        with st.expander("Deep research sources", expanded=True):
+            for engine in result["search_engines"]:
+                st.markdown(f"**{engine['provider']}**")
+                if engine.get("error"):
+                    st.warning(engine["error"])
+                elif not engine.get("configured"):
+                    st.info(engine.get("note", "Provider is not configured."))
+                for item in engine.get("results", []):
+                    st.markdown(f"- [{item.get('title') or item.get('url')}]({item.get('url')})")
+
+        with st.expander("Reverse image search", expanded=True):
+            if result["reverse_image_links"]:
+                st.write("Open these provider searches to compare the public image across the web:")
+                for item in result["reverse_image_links"]:
+                    st.markdown(f"- [{item['provider']}]({item['url']})")
+            else:
+                st.info("No public image URL was available for reverse-image research.")
+
+        with st.expander("Blockchain source tracing", expanded=True):
+            st.json(result["blockchain"])
 
 
 def render_prediction_results(result: dict, profile_data: dict, profile_number: int | None = None) -> None:

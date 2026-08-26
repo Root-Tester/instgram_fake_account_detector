@@ -2,7 +2,7 @@ import streamlit as st
 
 from model_loader import load_model
 from advanced_analysis import analyze_profiles
-from ui import render_inputs, render_prediction_results
+from ui import render_inputs, render_post_analysis, render_prediction_results
 
 st.set_page_config(
     page_title="Fake Profile Detector",
@@ -34,17 +34,23 @@ st.markdown(
 )
 
 model = load_model()
-profiles = render_inputs()
+account_tab, post_tab = st.tabs(["Account Analysis", "Post Analysis"])
 
-if profiles:
-    st.info(f"Batch ready: {len(profiles)} profile(s) loaded. Click below to run the analysis.")
+with post_tab:
+    render_post_analysis()
 
-    if st.button("Analyze Batch", type="primary", use_container_width=True):
-        with st.spinner("Analyzing profiles..."):
-            results = analyze_profiles(model, profiles)
+with account_tab:
+    profiles = render_inputs()
 
-        for profile_number, (result, profile_data) in enumerate(zip(results, profiles), start=1):
-            render_prediction_results(result, profile_data, profile_number)
+    if profiles:
+        st.info(f"Batch ready: {len(profiles)} profile(s) loaded. Click below to run the analysis.")
+
+        if st.button("Analyze Batch", type="primary", use_container_width=True):
+            with st.spinner("Analyzing profiles..."):
+                results = analyze_profiles(model, profiles)
+
+            for profile_number, (result, profile_data) in enumerate(zip(results, profiles), start=1):
+                render_prediction_results(result, profile_data, profile_number)
 
 st.markdown("---")
 st.caption("Model trained on real Instagram data. For research and safety use only.")

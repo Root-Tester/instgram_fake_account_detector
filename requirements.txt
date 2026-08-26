@@ -5,3 +5,4 @@ xgboost
 matplotlib
 scikit-learn
 pillow
+requests
