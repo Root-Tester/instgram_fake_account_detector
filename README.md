@@ -61,7 +61,7 @@ It is designed as a lightweight batch-analysis tool for reviewing one or many pr
 From the project directory:
 
 ```bash
-cd /workspaces/codespaces-blank/instgram-fake-account-detector
+cd /workspaces/codespaces-blank/instgram_fake_account_detector
 ./.venv/bin/python -m streamlit run app.py --server.headless true --server.address 127.0.0.1 --server.port 8502
 ```
 
