@@ -71,6 +71,20 @@ Open the browser at:
 http://127.0.0.1:8502
 ```
 
+## Quality checks
+
+Install the development dependencies and run the same checks used by GitHub Actions:
+
+```bash
+./.venv/bin/python -m pip install -r requirements-dev.txt
+./.venv/bin/python -m pylint --rcfile=.pylintrc *.py
+./.venv/bin/python -m pytest -q
+```
+
+The `n8n/github-quality-dispatch.json` export provides an optional webhook that
+dispatches the GitHub quality workflow. See `n8n/README.md` for token and webhook
+security setup.
+
 ## Sample input format
 
 Single object:
