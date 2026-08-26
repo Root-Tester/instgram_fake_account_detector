@@ -135,6 +135,12 @@ def render_post_analysis() -> None:
 
         report = result["report"]
         st.subheader("Evidence Report")
+        if report["verdict"] == "likely-fraudulent-or-misleading":
+            st.error(report["conclusion"])
+        elif report["verdict"] == "needs-verification":
+            st.warning(report["conclusion"])
+        else:
+            st.success(report["conclusion"])
         report_col1, report_col2, report_col3 = st.columns(3)
         report_col1.metric("Assessment", report["verdict"].replace("-", " ").title())
         report_col2.metric("Risk score", f"{report['risk_score']:.1%}")

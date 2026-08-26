@@ -182,23 +182,33 @@ def build_post_report(result: dict[str, Any]) -> dict[str, Any]:
     risk_points = 0.0
     if not post.get("accessible"):
         risk_points += 0.25
-    if image.get("image_risk", 0) >= 0.5:
-        risk_points += 0.2
+    risk_points += float(image.get("image_risk", 0)) * 0.45
     if blockchain.get("addresses_found"):
-        risk_points += 0.2
+        risk_points += 0.3
     if any(claim in {"job-vacancy", "offer-or-giveaway", "crypto-or-payment"} for claim in claims):
-        risk_points += 0.1
+        risk_points += 0.2
     if sources:
         risk_points -= 0.1
     risk_score = max(0.0, min(1.0, risk_points))
+    official_results = [
+        item
+        for group in result.get("official_source_verification", [])
+        for engine in group.get("sources", [])
+        for item in engine.get("results", [])
+    ]
+    claim_needs_verification = claims != ["general-claim"] and not official_results
     if risk_score >= 0.6:
         verdict = "likely-fraudulent-or-misleading"
-    elif risk_score >= 0.3:
+        conclusion = "Conclusion: FAKE or misleading post."
+    elif risk_score >= 0.3 or claim_needs_verification:
         verdict = "needs-verification"
+        conclusion = "Conclusion: UNVERIFIED post; do not treat it as real yet."
     else:
         verdict = "no-fraud-proof-found"
+        conclusion = "Conclusion: REAL-appearing post; no fraud proof found, but authenticity is not guaranteed."
     return {
         "verdict": verdict,
+        "conclusion": conclusion,
         "risk_score": round(risk_score, 3),
         "confidence": "low" if not sources or not post.get("accessible") else "medium",
         "claims_detected": claims,
