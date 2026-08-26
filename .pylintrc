@@ -1,0 +1,36 @@
+[MASTER]
+py-version=3.10
+jobs=1
+
+[MESSAGES CONTROL]
+disable=
+    missing-module-docstring,
+    missing-function-docstring,
+    missing-class-docstring,
+    too-few-public-methods,
+    invalid-name,
+    broad-exception-caught,
+    fixme,
+    line-too-long,
+    import-outside-toplevel,
+    too-many-locals,
+    too-many-branches,
+    too-many-statements,
+    duplicate-code,
+    unused-import,
+    missing-final-newline
+
+[BASIC]
+good-names=i,
+           j,
+           k,
+           X,
+           y,
+           ax,
+           df
+
+[FORMAT]
+max-line-length=120
+
+[TYPECHECK]
+generated-members=numpy.*,pandas.*,torch.*

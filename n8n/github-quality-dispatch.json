@@ -1,0 +1,108 @@
+{
+  "name": "Dispatch GitHub Python quality workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "github-quality",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "7f4fbe1a-0c2d-4b7e-a14f-8f2d8bd6a001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "github-quality"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/Root-Tester/instgram_fake_account_detector/actions/workflows/python-quality.yml/dispatches",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{$env.GITHUB_TOKEN}}"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"ref\":\"main\"}",
+        "options": {}
+      },
+      "id": "7f4fbe1a-0c2d-4b7e-a14f-8f2d8bd6a002",
+      "name": "Dispatch quality workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "7f4fbe1a-0c2d-4b7e-a14f-8f2d8bd6a003",
+              "name": "status",
+              "value": "GitHub quality workflow dispatched",
+              "type": "string"
+            },
+            {
+              "id": "7f4fbe1a-0c2d-4b7e-a14f-8f2d8bd6a004",
+              "name": "workflow",
+              "value": "python-quality.yml",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7f4fbe1a-0c2d-4b7e-a14f-8f2d8bd6a005",
+      "name": "Return dispatch status",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [780, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Dispatch quality workflow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dispatch quality workflow": {
+      "main": [
+        [
+          {
+            "node": "Return dispatch status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "7f4fbe1a-0c2d-4b7e-a14f-8f2d8bd6a006",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}
