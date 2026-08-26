@@ -1,4 +1,12 @@
-# Instagram Fake Account Detector
+# Instagram Fake Account Detector: AI-Powered Profile and Post Analysis
+
+> Open-source Streamlit toolkit for Instagram fake-account detection, post-content analysis, scam-risk triage, and explainable evidence review.
+
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-app-FF4B4B?logo=streamlit&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+**Topics:** Instagram fake account detector, fake post detection, scam detection, bot detection, content analysis, reverse image search, blockchain tracing, supervised learning, unsupervised learning, Streamlit.
 
 This project is a Streamlit-based application that predicts whether an Instagram profile looks fake or real using a trained XGBoost model.
 
@@ -37,16 +45,14 @@ It is designed as a lightweight batch-analysis tool for reviewing one or many pr
 
 ## Project structure
 
-- `app.py` — Streamlit entry point
-- `ui.py` — input form and prediction rendering logic
-- `predictor.py` — feature extraction and per-profile prediction
-- `model_loader.py` — loads the trained XGBoost model
-- `train_model.py` — trains the model and produces the model artifact
-- `data_io.py` — JSON parsing and normalization helpers
-- `validators.py` — input validation and schema checks
-- `config.py` — file paths and feature columns
-- `sample.json` — demo JSON input for testing the batch pipeline
-- `sdk.py` — Python SDK wrapper for embedding or calling the model from code
+- **Frontend:** `app.py`, `ui.py` — Streamlit tabs, forms, and result views.
+- **Backend analysis:** `predictor.py`, `advanced_analysis.py`, `post_analysis.py`, `validators.py`, `data_io.py` — feature extraction, evidence scoring, and public research.
+- **Models:** `model_loader.py`, `post_model.py`, `fake_profile_model.model`, `post_content_model.joblib` — supervised model loading and inference.
+- **Training:** `train_model.py`, `train_post_model.py`, `generate_post_dataset.py` — reproducible model and dataset workflows.
+- **Integration:** `sdk.py`, `n8n/` — programmatic access and optional automation.
+- **Runtime:** `run_app.sh`, `requirements.txt`, `requirements-dev.txt` — local deployment and dependencies.
+
+The repository keeps this v2.01 flat layout intentionally so existing imports and Bash usage remain compatible. The categories above are the frontend/backend/data boundaries for deployment and maintenance.
 
 ## How it works
 
@@ -70,6 +76,15 @@ Open the browser at:
 ```text
 http://127.0.0.1:8502
 ```
+
+For a configuration-driven Bash launch:
+
+```bash
+cp .env.example .env
+bash run_app.sh
+```
+
+Do not commit `.env`, API keys, private datasets, or user uploads. See [SECURITY.md](SECURITY.md).
 
 ## Quality checks
 

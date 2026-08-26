@@ -4,3 +4,33 @@ __pycache__/
 .streamlit/
 *.pyc
 .DS_Store
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets/
+credentials/
+
+# Runtime output and user uploads
+*.log
+uploads/
+reports/
+tmp/
+
+# Locally trained or downloaded artifacts; keep the reviewed baseline explicit
+*.joblib
+*.pkl
+*.pickle
+*.onnx
+*.pt
+*.pth
+!post_content_model.joblib
+
+# Private or generated training data
+*.csv
+*.jsonl
+!post_training_dataset.jsonl
