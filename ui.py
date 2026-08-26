@@ -146,6 +146,7 @@ def render_post_analysis() -> None:
         report_col2.metric("Risk score", f"{report['risk_score']:.1%}")
         report_col3.metric("Confidence", report["confidence"].title())
         st.info(report["basis"])
+        st.metric("Content risk", f"{report['content_analysis'].get('content_risk', 0):.1%}")
         if report["claims_detected"] != ["general-claim"]:
             st.write("Claim types detected: " + ", ".join(report["claims_detected"]))
 
@@ -154,6 +155,15 @@ def render_post_analysis() -> None:
                 source = item.get("source")
                 source_text = f" ([source]({source}))" if source else ""
                 st.markdown(f"- **{item['effect']}**: {item['finding']}{source_text}")
+
+        with st.expander("Post content analysis", expanded=True):
+            content = report["content_analysis"]
+            if content.get("signals"):
+                for signal in content["signals"]:
+                    st.markdown(f"- **{signal['signal']}**: {', '.join(signal['matches'])}")
+            else:
+                st.write("No high-risk content patterns were detected.")
+            st.caption(content.get("method", ""))
 
         with st.expander("Official-source verification", expanded=True):
             official_groups = report["official_source_verification"]

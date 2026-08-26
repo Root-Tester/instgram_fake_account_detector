@@ -142,6 +142,37 @@ def classify_claims(text: str) -> list[str]:
     return claims or ["general-claim"]
 
 
+def analyze_post_content(text: str) -> dict[str, Any]:
+    """Score observable caption patterns that commonly warrant verification."""
+    normalized = re.sub(r"\s+", " ", text).strip()
+    lowered = normalized.lower()
+    signal_patterns = {
+        "urgency-pressure": r"\b(act now| last chance|urgent|立即|today only|expires|hurry)\b",
+        "payment-request": r"\b(send|pay|transfer|deposit|fee|wallet|crypto|bitcoin|usdt|gift card)\b",
+        "job-scam-language": r"\b(no experience|guaranteed income|easy money|work from home|hiring|job vacancy|recruit)\b",
+        "impersonation-language": r"\b(official account|verify your account|instagram support|government official|claim to be)\b",
+        "engagement-bait": r"\b(share this|tag \d+|comment \w+|dm me|send a message|like and follow)\b",
+        "suspicious-link": r"(?:https?://|www\.)[^\s]+",
+    }
+    signals = [
+        {"signal": name, "matches": re.findall(pattern, lowered)}
+        for name, pattern in signal_patterns.items()
+        if re.search(pattern, lowered)
+    ]
+    exclamation_count = normalized.count("!")
+    all_caps_words = re.findall(r"\b[A-Z]{4,}\b", normalized)
+    risk_score = min(1.0, len(signals) * 0.16 + min(exclamation_count, 4) * 0.03 + min(len(all_caps_words), 4) * 0.03)
+    return {
+        "text_available": bool(normalized),
+        "character_count": len(normalized),
+        "signals": signals,
+        "exclamation_count": exclamation_count,
+        "all_caps_word_count": len(all_caps_words),
+        "content_risk": round(risk_score, 3),
+        "method": "Pattern-based analysis of publicly available text; context and sarcasm can cause false positives.",
+    }
+
+
 def _flatten_sources(search_engines: list[dict[str, Any]]) -> list[dict[str, str]]:
     sources: list[dict[str, str]] = []
     for engine in search_engines:
@@ -158,6 +189,7 @@ def build_post_report(result: dict[str, Any]) -> dict[str, Any]:
     claims = classify_claims(text)
     sources = _flatten_sources(result.get("search_engines", []))
     image = result.get("image_analysis", {})
+    content = result.get("content_analysis", {})
     blockchain = result.get("blockchain", {})
     evidence: list[dict[str, Any]] = [
         {
@@ -175,6 +207,11 @@ def build_post_report(result: dict[str, Any]) -> dict[str, Any]:
             "effect": "supports-verification" if blockchain.get("addresses_found") else "neutral",
             "source": post.get("url"),
         },
+        {
+            "finding": f"Post content risk score: {content.get('content_risk', 0):.1%}",
+            "effect": "supports-risk" if content.get("content_risk", 0) >= 0.3 else "neutral",
+            "source": post.get("url"),
+        },
     ]
     for source in sources[:MAX_SOURCES]:
         evidence.append({"finding": source["title"] or "Search result found", "effect": "requires-human-review", "source": source["url"], "provider": source["provider"]})
@@ -183,6 +220,7 @@ def build_post_report(result: dict[str, Any]) -> dict[str, Any]:
     if not post.get("accessible"):
         risk_points += 0.25
     risk_points += float(image.get("image_risk", 0)) * 0.45
+    risk_points += float(content.get("content_risk", 0)) * 0.5
     if blockchain.get("addresses_found"):
         risk_points += 0.3
     if any(claim in {"job-vacancy", "offer-or-giveaway", "crypto-or-payment"} for claim in claims):
@@ -212,6 +250,7 @@ def build_post_report(result: dict[str, Any]) -> dict[str, Any]:
         "risk_score": round(risk_score, 3),
         "confidence": "low" if not sources or not post.get("accessible") else "medium",
         "claims_detected": claims,
+        "content_analysis": content,
         "basis": "The verdict is a weighted triage signal based on the listed observations; it is not a legal or factual determination.",
         "proof": evidence,
         "image_provenance": {
@@ -265,6 +304,7 @@ def analyze_post(post_url: str) -> dict[str, Any]:
         result = {
             "post": post,
             "image_analysis": {"image_available": False, "image_risk": 0.0},
+            "content_analysis": analyze_post_content(post.get("description", "")),
             "search_engines": [],
             "reverse_image_links": [],
             "blockchain": trace_blockchain_sources(post.get("description", "")),
@@ -284,6 +324,7 @@ def analyze_post(post_url: str) -> dict[str, Any]:
         except requests.RequestException as exc:
             image_analysis = {"image_available": False, "image_risk": 0.0, "error": str(exc)}
     claims = classify_claims(combined_text)
+    content_analysis = analyze_post_content(combined_text)
     official_sources = [
         {"claim_type": claim, "sources": _search_official_sources(post, claim)}
         for claim in claims
@@ -292,6 +333,7 @@ def analyze_post(post_url: str) -> dict[str, Any]:
     result = {
         "post": post,
         "image_analysis": image_analysis,
+        "content_analysis": content_analysis,
         "search_engines": search_web(post),
         "reverse_image_links": reverse_image_search_links(post.get("image_url", "")),
         "blockchain": trace_blockchain_sources(combined_text),
