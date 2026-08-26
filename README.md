@@ -19,6 +19,14 @@ It also runs a separate advanced analysis layer alongside the supervised model:
 
 The Post Analysis tab produces an evidence report for a public Instagram post. It detects likely news, job, offer, and crypto/payment claims; searches public web sources and configured official domains; lists proof links and the basis for its risk score; and extracts wallet addresses for explorer review. It reports confidence and limitations instead of presenting an automated verdict as fact.
 
+Post content also supports supervised training. The optional model uses TF-IDF word n-grams and balanced logistic regression over human-labeled post text. Create a JSONL, JSON list, or JSON mapping with `text` (or `caption`) and `label` (real/ fake, 0/1), then run:
+
+```bash
+./.venv/bin/python train_post_model.py labeled_posts.jsonl --output post_content_model.joblib
+```
+
+The script prints held-out accuracy, ROC AUC, and a classification report. When `post_content_model.joblib` exists, Post Analysis displays its fake probability and combines it with the transparent content rules. A model trained on a small or biased dataset is not reliable; use independently reviewed examples and keep real and fake classes represented.
+
 Blockchain data cannot identify the person behind a wallet or prove that an image was first posted on Instagram. The report links to explorers and records these limitations. Proving image provenance requires a registered hash/provenance record from an external service, which this app does not invent.
 
 The original XGBoost model remains compatible with its 19 trained features. Advanced signals are combined after supervised inference, so enrichment does not silently change the meaning of the shipped model.

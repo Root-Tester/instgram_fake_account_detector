@@ -9,6 +9,7 @@ from typing import Any
 from urllib.parse import quote, urlparse
 
 import requests
+from post_model import load_post_model, predict_post_content
 
 
 USER_AGENT = "FakeProfileDetector/1.0 (public research; contact repository owner)"
@@ -173,6 +174,21 @@ def analyze_post_content(text: str) -> dict[str, Any]:
     }
 
 
+def enrich_content_with_supervised_model(content: dict[str, Any], text: str) -> dict[str, Any]:
+    """Add trained text probability when an optional post model is available."""
+    try:
+        prediction = predict_post_content(load_post_model(), text)
+    except (OSError, ValueError, RuntimeError):
+        prediction = None
+    content["supervised_model"] = prediction or {
+        "available": False,
+        "method": "No trained post model found; using transparent content rules only.",
+    }
+    if prediction:
+        content["content_risk"] = round(max(content["content_risk"], prediction["fake_probability"]), 3)
+    return content
+
+
 def _flatten_sources(search_engines: list[dict[str, Any]]) -> list[dict[str, str]]:
     sources: list[dict[str, str]] = []
     for engine in search_engines:
@@ -304,7 +320,7 @@ def analyze_post(post_url: str) -> dict[str, Any]:
         result = {
             "post": post,
             "image_analysis": {"image_available": False, "image_risk": 0.0},
-            "content_analysis": analyze_post_content(post.get("description", "")),
+            "content_analysis": enrich_content_with_supervised_model(analyze_post_content(post.get("description", "")), post.get("description", "")),
             "search_engines": [],
             "reverse_image_links": [],
             "blockchain": trace_blockchain_sources(post.get("description", "")),
@@ -324,7 +340,7 @@ def analyze_post(post_url: str) -> dict[str, Any]:
         except requests.RequestException as exc:
             image_analysis = {"image_available": False, "image_risk": 0.0, "error": str(exc)}
     claims = classify_claims(combined_text)
-    content_analysis = analyze_post_content(combined_text)
+    content_analysis = enrich_content_with_supervised_model(analyze_post_content(combined_text), combined_text)
     official_sources = [
         {"claim_type": claim, "sources": _search_official_sources(post, claim)}
         for claim in claims

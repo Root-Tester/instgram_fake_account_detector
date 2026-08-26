@@ -164,6 +164,12 @@ def render_post_analysis() -> None:
             else:
                 st.write("No high-risk content patterns were detected.")
             st.caption(content.get("method", ""))
+            supervised = content.get("supervised_model", {})
+            if supervised.get("available"):
+                st.metric("Supervised fake probability", f"{supervised['fake_probability']:.1%}")
+                st.caption(supervised.get("method", ""))
+            else:
+                st.info("No trained post-content model is installed; the displayed content score uses rules.")
 
         with st.expander("Official-source verification", expanded=True):
             official_groups = report["official_source_verification"]

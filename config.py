@@ -2,6 +2,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "fake_profile_model.model"
+POST_MODEL_PATH = BASE_DIR / "post_content_model.joblib"
 SAMPLE_PATH = BASE_DIR / "sample.json"
 FEATURE_COLS = [
     "followers",
