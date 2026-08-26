@@ -17,15 +17,61 @@ st.markdown(
     <style>
     .main .block-container {
         max-width: 1100px;
-        padding-top: 16px;
-        padding-bottom: 16px;
+        padding: 1rem clamp(0.75rem, 3vw, 2rem) 1.5rem;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    [data-testid="stHorizontalBlock"] {
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+
+    [data-testid="stMetric"] {
+        min-width: min(100%, 10rem);
+        overflow-wrap: anywhere;
+    }
+
+    [data-testid="stImage"] {
+        max-width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    [data-testid="stImage"] img {
+        width: auto !important;
+        max-width: 100%;
+        max-height: calc(100dvh - 8rem);
+        height: auto;
+        object-fit: contain;
+    }
+
+    [data-testid="stPlotlyChart"],
+    .stPlotlyChart {
+        max-width: 100%;
     }
 
     @media (max-width: 768px) {
         .main .block-container {
-            padding-left: 12px;
-            padding-right: 12px;
+            padding-top: 0.75rem;
+            padding-bottom: 1rem;
         }
+
+        [data-testid="stHorizontalBlock"] > [data-testid="column"] {
+            min-width: 100% !important;
+            flex: 1 1 100% !important;
+        }
+
+        [data-testid="stTabs"] [role="tablist"] {
+            overflow-x: auto;
+            scrollbar-width: thin;
+        }
+
+        [data-testid="stTabs"] [role="tab"] {
+            flex: 0 0 auto;
+            white-space: nowrap;
+        }
+
         .stButton button { width: 100%; }
     }
     </style>

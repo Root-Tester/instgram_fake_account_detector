@@ -246,7 +246,7 @@ def render_prediction_results(result: dict, profile_data: dict, profile_number: 
     ax.set_xticklabels(["0%", "50%", "100%"])
     ax.set_yticks([])
     ax.set_title("Fake Likelihood")
-    st.pyplot(fig)
+    st.pyplot(fig, use_container_width=True)
 
     with st.expander("Profile Summary", expanded=True):
         summary = {
