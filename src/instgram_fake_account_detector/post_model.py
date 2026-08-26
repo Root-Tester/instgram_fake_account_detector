@@ -10,7 +10,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
-from config import POST_MODEL_PATH
+from instgram_fake_account_detector.config import POST_MODEL_PATH
 
 
 def normalize_post_label(value: Any) -> int:

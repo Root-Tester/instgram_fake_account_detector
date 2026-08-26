@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from config import SAMPLE_PATH
+from instgram_fake_account_detector.config import SAMPLE_PATH
 
 
 def load_json_from_text(text: str) -> Any:

@@ -163,7 +163,7 @@ def analyze_profiles(
     reverse_image_provider: ReverseImageSearchProvider | None = None,
 ) -> list[dict[str, Any]]:
     """Combine supervised, enrichment, anomaly, cluster, and final category signals."""
-    from predictor import predict_profile
+    from instgram_fake_account_detector.predictor import predict_profile
 
     results: list[dict[str, Any]] = []
     vectors: list[list[float]] = []

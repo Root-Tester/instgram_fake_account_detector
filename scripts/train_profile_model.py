@@ -2,6 +2,11 @@ import json
 import numpy as np
 import pandas as pd
 import xgboost as xgb
+from pathlib import Path
+
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from instgram_fake_account_detector.config import MODEL_PATH, PROFILE_DATA_PATH
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
@@ -17,7 +22,7 @@ from sklearn.metrics import (
 # LOAD DATASET
 # ==============================
 
-with open("fake_profile_model.json", "r", encoding="utf-8") as f:
+with PROFILE_DATA_PATH.open("r", encoding="utf-8") as f:
     raw = json.load(f)
 
 # Dataset is stored as {"01": {...}, "02": {...}}
@@ -202,6 +207,6 @@ print(confusion_matrix(y_test, pred))
 # SAVE MODEL
 # ==============================
 
-model.get_booster().save_model("fake_profile_model.model")
+model.get_booster().save_model(str(MODEL_PATH))
 
 print("\nModel saved as fake_profile_model.model")

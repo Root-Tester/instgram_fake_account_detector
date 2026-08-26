@@ -1,9 +1,14 @@
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
-MODEL_PATH = BASE_DIR / "fake_profile_model.model"
-POST_MODEL_PATH = BASE_DIR / "post_content_model.joblib"
-SAMPLE_PATH = BASE_DIR / "sample.json"
+PROJECT_DIR = BASE_DIR.parents[1]
+DATA_DIR = PROJECT_DIR / "data"
+MODEL_DIR = PROJECT_DIR / "models"
+MODEL_PATH = MODEL_DIR / "fake_profile_model.model"
+POST_MODEL_PATH = MODEL_DIR / "post_content_model.joblib"
+SAMPLE_PATH = PROJECT_DIR / "examples" / "sample.json"
+PROFILE_DATA_PATH = DATA_DIR / "profiles" / "fake_profile_model.json"
+POST_DATA_PATH = DATA_DIR / "posts" / "post_training_dataset.jsonl"
 FEATURE_COLS = [
     "followers",
     "followees",

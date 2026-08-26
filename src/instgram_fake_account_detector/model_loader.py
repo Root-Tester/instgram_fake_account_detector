@@ -1,7 +1,7 @@
 from pathlib import Path
 import xgboost as xgb
 import streamlit as st
-from config import MODEL_PATH
+from instgram_fake_account_detector.config import MODEL_PATH
 
 @st.cache_resource
 def load_model():

@@ -28,9 +28,9 @@ tmp/
 *.onnx
 *.pt
 *.pth
-!post_content_model.joblib
+!models/post_content_model.joblib
 
 # Private or generated training data
 *.csv
 *.jsonl
-!post_training_dataset.jsonl
+!data/posts/post_training_dataset.jsonl

@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from config import FEATURE_COLS
-from validators import normalize_bool
+from instgram_fake_account_detector.config import FEATURE_COLS
+from instgram_fake_account_detector.validators import normalize_bool
 
 
 def _safe_number(value: object) -> float:

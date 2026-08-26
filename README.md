@@ -30,7 +30,7 @@ The Post Analysis tab produces an evidence report for a public Instagram post. I
 Post content also supports supervised training. The optional model uses TF-IDF word n-grams and balanced logistic regression over human-labeled post text. Create a JSONL, JSON list, or JSON mapping with `text` (or `caption`) and `label` (real/ fake, 0/1), then run:
 
 ```bash
-./.venv/bin/python train_post_model.py labeled_posts.jsonl --output post_content_model.joblib
+PYTHONPATH=src ./.venv/bin/python scripts/train_post_model.py data/posts/labeled_posts.jsonl --output models/post_content_model.joblib
 ```
 
 The script prints held-out accuracy, ROC AUC, and a classification report. When `post_content_model.joblib` exists, Post Analysis displays its fake probability and combines it with the transparent content rules. A model trained on a small or biased dataset is not reliable; use independently reviewed examples and keep real and fake classes represented.
@@ -45,14 +45,15 @@ It is designed as a lightweight batch-analysis tool for reviewing one or many pr
 
 ## Project structure
 
-- **Frontend:** `app.py`, `ui.py` — Streamlit tabs, forms, and result views.
-- **Backend analysis:** `predictor.py`, `advanced_analysis.py`, `post_analysis.py`, `validators.py`, `data_io.py` — feature extraction, evidence scoring, and public research.
-- **Models:** `model_loader.py`, `post_model.py`, `fake_profile_model.model`, `post_content_model.joblib` — supervised model loading and inference.
-- **Training:** `train_model.py`, `train_post_model.py`, `generate_post_dataset.py` — reproducible model and dataset workflows.
+- **Frontend:** `src/instgram_fake_account_detector/streamlit_app.py`, `ui.py` — Streamlit tabs, forms, and result views.
+- **Backend analysis:** `src/instgram_fake_account_detector/predictor.py`, `advanced_analysis.py`, `post_analysis.py`, `validators.py`, `data_io.py` — feature extraction, evidence scoring, and public research.
+- **Models:** `src/instgram_fake_account_detector/model_loader.py`, `post_model.py`, `models/` — supervised model loading and inference.
+- **Training:** `scripts/train_profile_model.py`, `scripts/train_post_model.py`, `scripts/generate_post_dataset.py` — reproducible model and dataset workflows.
+- **Data:** `data/profiles/`, `data/posts/`; examples live in `examples/`.
 - **Integration:** `sdk.py`, `n8n/` — programmatic access and optional automation.
 - **Runtime:** `run_app.sh`, `requirements.txt`, `requirements-dev.txt` — local deployment and dependencies.
 
-The repository keeps this v2.01 flat layout intentionally so existing imports and Bash usage remain compatible. The categories above are the frontend/backend/data boundaries for deployment and maintenance.
+The root `app.py` and `sdk.py` files are compatibility shims. The categorized package under `src/` is the maintained implementation.
 
 ## How it works
 
@@ -68,7 +69,7 @@ From the project directory:
 
 ```bash
 cd /workspaces/codespaces-blank/instgram-fake-account-detector
-./.venv/bin/python -m streamlit run app.py --server.headless true --server.address 127.0.0.1 --server.port 8502
+PYTHONPATH=src ./.venv/bin/python -m streamlit run src/instgram_fake_account_detector/streamlit_app.py --server.headless true --server.address 127.0.0.1 --server.port 8502
 ```
 
 Open the browser at:
@@ -92,8 +93,8 @@ Install the development dependencies and run the same checks used by GitHub Acti
 
 ```bash
 ./.venv/bin/python -m pip install -r requirements-dev.txt
-./.venv/bin/python -m pylint --rcfile=.pylintrc *.py
-./.venv/bin/python -m pytest -q
+PYTHONPATH=src ./.venv/bin/python -m pylint --rcfile=.pylintrc src scripts tests
+PYTHONPATH=src ./.venv/bin/python -m pytest -q
 ```
 
 The `n8n/github-quality-dispatch.json` export provides an optional webhook that

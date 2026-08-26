@@ -1,8 +1,8 @@
 import streamlit as st
 
-from model_loader import load_model
-from advanced_analysis import analyze_profiles
-from ui import render_inputs, render_post_analysis, render_prediction_results
+from instgram_fake_account_detector.model_loader import load_model
+from instgram_fake_account_detector.advanced_analysis import analyze_profiles
+from instgram_fake_account_detector.ui import render_inputs, render_post_analysis, render_prediction_results
 
 st.set_page_config(
     page_title="Fake Profile Detector",

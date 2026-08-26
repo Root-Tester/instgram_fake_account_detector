@@ -1,5 +1,5 @@
-from advanced_analysis import analyze_image, analyze_network, analyze_profiles, analyze_reverse_image
-from model_loader import load_model
+from instgram_fake_account_detector.advanced_analysis import analyze_image, analyze_network, analyze_profiles, analyze_reverse_image
+from instgram_fake_account_detector.model_loader import load_model
 
 
 def test_network_and_reverse_image_evidence_are_scored():

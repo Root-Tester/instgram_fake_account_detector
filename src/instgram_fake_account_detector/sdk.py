@@ -2,8 +2,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from advanced_analysis import ReverseImageSearchProvider, analyze_profiles
-from model_loader import load_model
+from instgram_fake_account_detector.advanced_analysis import ReverseImageSearchProvider, analyze_profiles
+from instgram_fake_account_detector.model_loader import load_model
 
 
 class FakeProfileDetectorSDK:

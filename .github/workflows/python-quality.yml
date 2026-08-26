@@ -27,7 +27,7 @@ jobs:
         run: python -m pip install -r requirements-dev.txt
 
       - name: Run Pylint
-        run: python -m pylint --rcfile=.pylintrc *.py
+        run: python -m pylint --rcfile=.pylintrc src scripts tests
 
       - name: Run tests
         run: python -m pytest -q

@@ -9,7 +9,7 @@ from typing import Any
 from urllib.parse import quote, urlparse
 
 import requests
-from post_model import load_post_model, predict_post_content
+from instgram_fake_account_detector.post_model import load_post_model, predict_post_content
 
 
 USER_AGENT = "FakeProfileDetector/1.0 (public research; contact repository owner)"
@@ -334,7 +334,7 @@ def analyze_post(post_url: str) -> dict[str, Any]:
     if post.get("image_url"):
         try:
             image_response = _request(post["image_url"])
-            from advanced_analysis import analyze_image
+            from instgram_fake_account_detector.advanced_analysis import analyze_image
 
             image_analysis = analyze_image({"image_bytes": image_response.content})
         except requests.RequestException as exc:

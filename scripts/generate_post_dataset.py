@@ -71,7 +71,7 @@ def generate_dataset(output: str | Path, rows: int = 50_000, seed: int = 42) -> 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate synthetic labeled post text data.")
-    parser.add_argument("--output", default="post_training_dataset.jsonl")
+    parser.add_argument("--output", default="data/posts/post_training_dataset.jsonl")
     parser.add_argument("--rows", type=int, default=50_000)
     parser.add_argument("--seed", type=int, default=42)
     arguments = parser.parse_args()

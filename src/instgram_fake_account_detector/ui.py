@@ -1,10 +1,10 @@
 import streamlit as st
 import matplotlib.pyplot as plt
 
-from post_analysis import analyze_post
-from config import SAMPLE_PATH
-from data_io import load_json_file, load_json_from_text, load_sample_json, normalize_profiles
-from validators import PROFILE_EXAMPLE, validate_profile_data
+from instgram_fake_account_detector.post_analysis import analyze_post
+from instgram_fake_account_detector.config import SAMPLE_PATH
+from instgram_fake_account_detector.data_io import load_json_file, load_json_from_text, load_sample_json, normalize_profiles
+from instgram_fake_account_detector.validators import PROFILE_EXAMPLE, validate_profile_data
 
 
 def _render_sidebar_help() -> None:
