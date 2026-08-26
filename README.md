@@ -10,6 +10,15 @@ The detector uses metadata such as:
 - username and biography properties
 - a few derived ratio features
 
+It also runs a separate advanced analysis layer alongside the supervised model:
+- local image quality and SHA-256 signals (images are not sent anywhere)
+- optional reverse-image-search evidence supplied by an adapter or JSON field
+- network and blockchain wallet/transaction risk signals
+- unsupervised Isolation Forest anomaly scoring
+- DBSCAN account clusters calculated across the submitted batch
+
+The original XGBoost model remains compatible with its 19 trained features. Advanced signals are combined after supervised inference, so enrichment does not silently change the meaning of the shipped model.
+
 It is designed as a lightweight batch-analysis tool for reviewing one or many profile records.
 
 ## Project structure
@@ -92,6 +101,28 @@ Array of profiles:
 ]
 ```
 
+## Advanced analysis input
+
+Optional fields can be added to any profile. `image_bytes` may contain base64-encoded image data, while the Streamlit app can attach local image uploads automatically. Reverse-image evidence can be supplied by a trusted integration:
+
+```json
+{
+  "wallet_address": "0x...",
+  "blockchain": {
+    "wallet_address": "0x...",
+    "transactions": [{"is_suspicious": true, "risk": "high"}]
+  },
+  "network_connections": ["related_account_1", "related_account_2"],
+  "reverse_image_search": {
+    "matches": ["https://example.com/match"],
+    "exact_matches": 1,
+    "stock_matches": 0
+  }
+}
+```
+
+For live reverse-image services, implement `ReverseImageSearchProvider.search(image: bytes)` and pass it to `FakeProfileDetectorSDK.predict_profile` or `predict_batch`. No provider is called implicitly, which keeps local analysis deterministic and avoids sending profile images without consent.
+
 ## Python SDK usage
 
 ```python
@@ -139,10 +170,14 @@ print(results)
 Creates the detector SDK and loads the model from the default project model file unless a custom path is supplied.
 
 ### `predict_profile(profile: dict) -> dict`
-Returns a single prediction object with:
+Returns a single prediction object with supervised and advanced fields:
 - `probability_fake`
 - `is_fake`
 - `confidence`
+- `anomaly_score`
+- `cluster_id` and `cluster_label`
+- `classification` and combined `risk_score`
+- `image_analysis`, `reverse_image_analysis`, and `network_analysis`
 
 ### `predict_batch(profiles: list[dict]) -> list[dict]`
 Runs predictions for each profile and returns a list of result dictionaries.
@@ -152,12 +187,7 @@ Reads a JSON file containing either one profile object or an array of profile ob
 
 ## Important limitations
 
-This application is a metadata-based detector, not a full social-media intelligence system. It does not inspect:
-- the actual followers and followees network
-- the content of posts and captions
-- the identity or authenticity of images
-- engagement quality or comment behavior
-- account history or activity timing
+This application is an evidence-ranking tool, not a definitive identity or fraud service. Network, blockchain, and reverse-image results are only as reliable as the supplied data or integration provider. Unsupervised clusters describe similarity within the submitted batch; they are not verified scam groups. The app does not bypass platform access controls or scrape private accounts.
 
 Because of that, results are best treated as a heuristic signal rather than a definitive real-world verdict.
 

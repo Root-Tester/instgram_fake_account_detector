@@ -76,6 +76,17 @@ def render_inputs() -> list[dict] | None:
             if batch_profiles:
                 payload = batch_profiles
 
+        image_files = st.file_uploader(
+            "Optional profile images, in the same order as the JSON profiles",
+            type=["jpg", "jpeg", "png", "webp"],
+            accept_multiple_files=True,
+            help="Images are analyzed locally. They are not uploaded to a reverse-image-search service.",
+        )
+        if image_files and payload:
+            for profile_data, image_file in zip(payload, image_files):
+                profile_data["_image_bytes"] = image_file.getvalue()
+            st.info(f"Attached {min(len(image_files), len(payload))} local image(s) to the batch.")
+
     with tab3:
         if SAMPLE_PATH.exists():
             if st.checkbox("Load sample.json", value=False):
@@ -120,6 +131,12 @@ def render_prediction_results(result: dict, profile_data: dict, profile_number: 
     )
     col3.metric("Confidence", conf)
 
+    st.caption(
+        f"Classification: {result.get('classification', 'supervised-only')} | "
+        f"Risk score: {result.get('risk_score', prob):.1%} | "
+        f"Cluster: {result.get('cluster_label', 'not calculated')}"
+    )
+
     fig, ax = plt.subplots(figsize=(8, 1.5))
     ax.barh(0, prob, color="#ff4b4b" if is_fake else "#4ade80", height=0.6)
     ax.set_xlim(0, 1)
@@ -143,6 +160,15 @@ def render_prediction_results(result: dict, profile_data: dict, profile_number: 
             "Has Bio": len(str(profile_data.get("biography", ""))) > 10,
         }
         st.json(summary)
+
+    with st.expander("Advanced evidence", expanded=False):
+        st.json({
+            "Anomaly score": result.get("anomaly_score", 0),
+            "Cluster ID": result.get("cluster_id"),
+            "Image analysis": result.get("image_analysis", {}),
+            "Reverse image analysis": result.get("reverse_image_analysis", {}),
+            "Network analysis": result.get("network_analysis", {}),
+        })
 
     if is_fake:
         st.error("**High risk of being fake or bot.**")

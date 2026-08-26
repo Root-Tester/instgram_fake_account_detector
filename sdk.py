@@ -2,8 +2,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from advanced_analysis import ReverseImageSearchProvider, analyze_profiles
 from model_loader import load_model
-from predictor import predict_profile
 
 
 class FakeProfileDetectorSDK:
@@ -20,30 +20,38 @@ class FakeProfileDetectorSDK:
         model.load_model(str(model_path))
         return model
 
-    def predict_profile(self, profile: dict[str, Any]) -> dict[str, Any]:
-        return predict_profile(self.model, profile)
+    def predict_profile(
+        self,
+        profile: dict[str, Any],
+        reverse_image_provider: ReverseImageSearchProvider | None = None,
+    ) -> dict[str, Any]:
+        return analyze_profiles(self.model, [profile], reverse_image_provider)[0]
 
-    def predict_batch(self, profiles: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        return [predict_profile(self.model, profile) for profile in profiles]
+    def predict_batch(
+        self,
+        profiles: list[dict[str, Any]],
+        reverse_image_provider: ReverseImageSearchProvider | None = None,
+    ) -> list[dict[str, Any]]:
+        return analyze_profiles(self.model, profiles, reverse_image_provider)
 
     def predict_file(self, file_path: str | Path) -> list[dict[str, Any]]:
         with Path(file_path).open("r", encoding="utf-8") as handle:
             payload = json.load(handle)
 
         if isinstance(payload, dict):
-            return [predict_profile(self.model, payload)]
+            return [self.predict_profile(payload)]
 
         if isinstance(payload, list):
-            return [predict_profile(self.model, item) for item in payload]
+            return self.predict_batch(payload)
 
         raise ValueError("JSON file must contain a profile object or a list of profile objects.")
 
     def predict_text(self, json_text: str) -> list[dict[str, Any]]:
         payload = json.loads(json_text)
         if isinstance(payload, dict):
-            return [predict_profile(self.model, payload)]
+            return [self.predict_profile(payload)]
         if isinstance(payload, list):
-            return [predict_profile(self.model, item) for item in payload]
+            return self.predict_batch(payload)
         raise ValueError("JSON text must contain a profile object or a list of profile objects.")
 
 

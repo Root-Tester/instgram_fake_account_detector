@@ -1,7 +1,7 @@
 import streamlit as st
 
 from model_loader import load_model
-from predictor import predict_profile
+from advanced_analysis import analyze_profiles
 from ui import render_inputs, render_prediction_results
 
 st.set_page_config(
@@ -41,7 +41,7 @@ if profiles:
 
     if st.button("Analyze Batch", type="primary", use_container_width=True):
         with st.spinner("Analyzing profiles..."):
-            results = [predict_profile(model, profile_data) for profile_data in profiles]
+            results = analyze_profiles(model, profiles)
 
         for profile_number, (result, profile_data) in enumerate(zip(results, profiles), start=1):
             render_prediction_results(result, profile_data, profile_number)
