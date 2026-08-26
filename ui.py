@@ -133,6 +133,41 @@ def render_post_analysis() -> None:
         col2.metric("Wallets found", len(result["blockchain"]["addresses_found"]))
         col3.metric("Image risk", f"{result['image_analysis'].get('image_risk', 0):.1%}")
 
+        report = result["report"]
+        st.subheader("Evidence Report")
+        report_col1, report_col2, report_col3 = st.columns(3)
+        report_col1.metric("Assessment", report["verdict"].replace("-", " ").title())
+        report_col2.metric("Risk score", f"{report['risk_score']:.1%}")
+        report_col3.metric("Confidence", report["confidence"].title())
+        st.info(report["basis"])
+        if report["claims_detected"] != ["general-claim"]:
+            st.write("Claim types detected: " + ", ".join(report["claims_detected"]))
+
+        with st.expander("Proof and source trail", expanded=True):
+            for item in report["proof"]:
+                source = item.get("source")
+                source_text = f" ([source]({source}))" if source else ""
+                st.markdown(f"- **{item['effect']}**: {item['finding']}{source_text}")
+
+        with st.expander("Official-source verification", expanded=True):
+            official_groups = report["official_source_verification"]
+            if not official_groups:
+                st.info("No job, offer, payment, or news claim was detected in the public caption.")
+            for group in official_groups:
+                st.markdown(f"**{group['claim_type']}**")
+                for engine in group["sources"]:
+                    if not engine.get("configured"):
+                        st.caption(engine.get("note", f"{engine['provider']} is not configured."))
+                    for item in engine.get("results", []):
+                        st.markdown(f"- [{item.get('title') or item.get('url')}]({item.get('url')}) ({engine['provider']})")
+
+        with st.expander("Image provenance and blockchain trace", expanded=True):
+            st.json({
+                "Image provenance": report["image_provenance"],
+                "Blockchain": result["blockchain"],
+                "Limitations": report["limitations"],
+            })
+
         if post.get("image_url"):
             st.image(post["image_url"], caption="Public post image", width="stretch")
         st.markdown(f"**{post.get('title') or 'Instagram post'}**")

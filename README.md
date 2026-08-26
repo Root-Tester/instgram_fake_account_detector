@@ -17,6 +17,10 @@ It also runs a separate advanced analysis layer alongside the supervised model:
 - unsupervised Isolation Forest anomaly scoring
 - DBSCAN account clusters calculated across the submitted batch
 
+The Post Analysis tab produces an evidence report for a public Instagram post. It detects likely news, job, offer, and crypto/payment claims; searches public web sources and configured official domains; lists proof links and the basis for its risk score; and extracts wallet addresses for explorer review. It reports confidence and limitations instead of presenting an automated verdict as fact.
+
+Blockchain data cannot identify the person behind a wallet or prove that an image was first posted on Instagram. The report links to explorers and records these limitations. Proving image provenance requires a registered hash/provenance record from an external service, which this app does not invent.
+
 The original XGBoost model remains compatible with its 19 trained features. Advanced signals are combined after supervised inference, so enrichment does not silently change the meaning of the shipped model.
 
 It is designed as a lightweight batch-analysis tool for reviewing one or many profile records.
