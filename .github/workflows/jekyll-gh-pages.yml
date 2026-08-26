@@ -1,4 +1,4 @@
-name: Deploy Jekyll site to GitHub Pages
+name: Deploy app launch page to GitHub Pages
 
 on:
   push:
@@ -25,7 +25,21 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Build Jekyll site
+      - name: Configure hosted app link
+        env:
+          STREAMLIT_APP_URL: ${{ vars.STREAMLIT_APP_URL }}
+        run: |
+          python - <<'PY'
+          import os
+          from pathlib import Path
+
+          page = Path("index.html")
+          content = page.read_text(encoding="utf-8")
+          content = content.replace("__STREAMLIT_APP_URL__", os.environ.get("STREAMLIT_APP_URL", ""))
+          page.write_text(content, encoding="utf-8")
+          PY
+
+      - name: Build Pages site
         uses: actions/jekyll-build-pages@v1
         with:
           source: .
