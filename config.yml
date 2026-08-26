@@ -1,0 +1,35 @@
+title: Instagram Fake Account Detector
+description: Evidence-ranking tools for reviewing public Instagram profile and post signals.
+repository: Root-Tester/instgram_fake_account_detector
+url: https://root-tester.github.io
+baseurl: /instgram_fake_account_detector
+
+github:
+  repository_url: https://github.com/Root-Tester/instgram_fake_account_detector
+
+lang: en-US
+timezone: UTC
+markdown: kramdown
+permalink: pretty
+future: false
+incremental: false
+
+theme: minima
+minima:
+  skin: classic
+
+plugins:
+  - jekyll-feed
+
+exclude:
+  - .venv/
+  - __pycache__/
+  - '*.py'
+  - '*.json'
+  - '*.joblib'
+  - '*.model'
+  - requirements*.txt
+  - n8n/
+  - Gemfile
+  - Gemfile.lock
+  - README.md

@@ -1,6 +1,9 @@
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
+# Deployment boundary: app.py/ui.py are the frontend; analysis modules are the backend.
+APP_HOST = "0.0.0.0"
+APP_PORT = 8501
 MODEL_PATH = BASE_DIR / "fake_profile_model.model"
 POST_MODEL_PATH = BASE_DIR / "post_content_model.joblib"
 SAMPLE_PATH = BASE_DIR / "sample.json"

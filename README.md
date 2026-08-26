@@ -71,6 +71,13 @@ Open the browser at:
 http://127.0.0.1:8502
 ```
 
+## Deployment layout
+
+- **Frontend:** `app.py` and `ui.py` provide the Streamlit account and Post Analysis tabs. `index.html` is the optional GitHub Pages launch page.
+- **Backend:** `predictor.py`, `advanced_analysis.py`, `post_analysis.py`, and `post_model.py` perform inference and research. Model files remain local to the running Streamlit service.
+- **Configuration:** `run_app.sh` reads optional `.env` values for `HOST`, `PORT`, `PYTHON_BIN`, and research API keys. Copy `.env.example` to `.env` for local deployment settings, then run `bash run_app.sh`.
+- **GitHub Pages:** `.github/workflows/jekyll-gh-pages.yml` deploys the static launch page. Set the repository variable `STREAMLIT_APP_URL` to the public URL of the Streamlit backend; GitHub Pages cannot execute the Python backend itself.
+
 ## Deploy the app
 
 GitHub Pages can only serve the static launch page; it cannot run Python or
