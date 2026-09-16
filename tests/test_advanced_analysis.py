@@ -33,10 +33,11 @@ def test_batch_analysis_returns_unsupervised_fields():
     profiles = [
         {"username": "one", "followers": 10, "followees": 500},
         {"username": "two", "followers": 500, "followees": 20},
+        {"username": "hydra", "followers": 500, "followees": 60},
     ]
 
     results = analyze_profiles(load_model(), profiles)
 
-    assert len(results) == 2
+    assert len(results) == 3
     assert all("anomaly_score" in result for result in results)
     assert all("cluster_id" in result for result in results)

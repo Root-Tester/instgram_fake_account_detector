@@ -28,7 +28,10 @@ def validate_post_url(post_url: str) -> str:
     parsed = urlparse(raw_url)
     if parsed.scheme != "https" or parsed.netloc.lower() not in {"instagram.com", "www.instagram.com"}:
         raise ValueError("Enter a public Instagram URL such as https://www.instagram.com/p/POST_ID/.")
-    if parsed.params or parsed.query or parsed.fragment or parsed.username or parsed.password or parsed.port:
+    has_disallowed_components = any(
+        (parsed.params, parsed.query, parsed.fragment, parsed.username, parsed.password, parsed.port)
+    )
+    if has_disallowed_components:
         raise ValueError("Enter a clean public Instagram post URL without query strings, fragments, credentials, or custom ports.")
     match = re.fullmatch(r"/(p|reel|tv)/([A-Za-z0-9_-]+)/?", parsed.path)
     if not match:
