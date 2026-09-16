@@ -25,7 +25,7 @@ def _request(url: str, params: dict[str, str] | None = None) -> requests.Respons
 
 def validate_post_url(post_url: str) -> str:
     parsed = urlparse(post_url.strip())
-    if parsed.scheme not in {"http", "https"} or parsed.netloc.lower() not in {"instagram.com", "www.instagram.com"}:
+    if parsed.scheme != "https" or parsed.netloc.lower() not in {"instagram.com", "www.instagram.com"}:
         raise ValueError("Enter a public Instagram URL such as https://www.instagram.com/p/POST_ID/.")
     if not re.search(r"/(p|reel|tv)/[A-Za-z0-9_-]+", parsed.path):
         raise ValueError("The URL must point to an Instagram post, reel, or video.")
