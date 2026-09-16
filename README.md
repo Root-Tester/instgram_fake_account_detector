@@ -68,15 +68,20 @@ The root `app.py` and `sdk.py` files are compatibility shims. The categorized pa
 From the project directory:
 
 ```bash
-cd /workspaces/codespaces-blank/instgram-fake-account-detector
-PYTHONPATH=src ./.venv/bin/python -m streamlit run src/instgram_fake_account_detector/streamlit_app.py --server.headless true --server.address 127.0.0.1 --server.port 8502
+cd /workspaces/instgram_fake_account_detector
+bash run_app.sh
 ```
 
 Open the browser at:
 
 ```text
-http://127.0.0.1:8502
+http://127.0.0.1:8501
 ```
+
+`run_app.sh` binds to `0.0.0.0` and uses the `PORT` environment variable when
+provided by a host such as Render. It falls back to port `8501` for local use.
+The included `render.yaml` configures Render to install dependencies and start
+the same launcher.
 
 For a configuration-driven Bash launch:
 
