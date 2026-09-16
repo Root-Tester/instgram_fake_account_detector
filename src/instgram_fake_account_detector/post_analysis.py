@@ -135,7 +135,7 @@ def _fetch_candidate_media(  # pylint: disable=too-many-return-statements
     except (requests.RequestException, ValueError, OSError) as exc:
         return {
             "available": False,
-            "error": f"Candidate media could not be validated: {exc}",
+            "error": "Candidate media could not be validated.",
         }
 
 
@@ -208,7 +208,7 @@ def fetch_public_post(post_url: str) -> dict[str, Any]:
         return {
             "url": url,
             "accessible": False,
-            "error": f"Public page could not be fetched: {exc}",
+            "error": "Public page could not be fetched.",
         }
 
     document = response.text
@@ -247,7 +247,7 @@ def _ddg_search(query: str) -> dict[str, Any]:
             "provider": "DuckDuckGo",
             "configured": True,
             "results": [],
-            "error": str(exc),
+            "error": "DuckDuckGo search request failed.",
         }
 
 
@@ -278,7 +278,7 @@ def _google_search(query: str) -> dict[str, Any]:
             "provider": "Google",
             "configured": True,
             "results": [],
-            "error": str(exc),
+            "error": "Google search request failed.",
         }
 
 
@@ -313,7 +313,7 @@ def _bing_search(query: str) -> dict[str, Any]:
             "provider": "Bing",
             "configured": True,
             "results": [],
-            "error": str(exc),
+            "error": "Bing search request failed.",
         }
 
 
