@@ -23,6 +23,37 @@ def cors_origins() -> list[str]:
     return origins or ["http://localhost:5173", "http://127.0.0.1:5173"]
 
 
+def api_keys() -> set[str]:
+    """Return configured API keys without exposing them in application responses."""
+    configured = os.getenv("API_KEYS", os.getenv("API_KEY", ""))
+    return {key.strip() for key in configured.split(",") if key.strip()}
+
+
+def api_key_required() -> bool:
+    """Require API authentication when explicitly enabled or running production."""
+    return os.getenv("REQUIRE_API_KEY", "").lower() in {"1", "true", "yes"} or (
+        os.getenv("ENVIRONMENT", "").lower() == "production"
+    )
+
+
+def rate_limit() -> tuple[int, int]:
+    """Return the request limit and rolling-window size in seconds."""
+    try:
+        limit = max(1, int(os.getenv("RATE_LIMIT_REQUESTS", "120")))
+        window = max(1, int(os.getenv("RATE_LIMIT_WINDOW_SECONDS", "60")))
+    except ValueError:
+        return 120, 60
+    return limit, window
+
+
+def max_request_bytes() -> int:
+    """Return the maximum accepted request body size."""
+    try:
+        return max(1024, int(os.getenv("MAX_REQUEST_BYTES", str(256 * 1024))))
+    except ValueError:
+        return 256 * 1024
+
+
 FEATURE_COLS = [
     "followers",
     "followees",

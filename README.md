@@ -86,7 +86,7 @@ The repository is configured as two Render services in [render.yaml](./render.ya
 
 1. A Python web service named `instagram-fake-account-detector-api`.
    Render installs `requirements.txt`, runs `bash run_api.sh`, and checks
-   `/health`.
+   `/ready`.
 2. A static site named `instagram-fake-account-detector-frontend`.
    Render runs `npm ci && npm run build` from `frontend/` and publishes `dist/`.
 
@@ -98,6 +98,18 @@ embeds `VITE_*` values into browser assets.
 
 The frontend and backend are intentionally separate deployments. The frontend
 calls the backend over HTTPS; it does not run Python or model inference.
+
+For production, set `ENVIRONMENT=production`, `REQUIRE_API_KEY=true`, and
+configure `API_KEYS` as a Render secret. The frontend's `VITE_API_KEY` is a
+browser access token, not a confidential server secret; use a private frontend,
+short-lived/revocable keys, and a gateway or user-authentication layer when
+strong client identity is required. The opaque validated-media URL remains a
+capability URL so browser image requests do not need custom headers.
+
+The included production configuration is intended for a controlled single
+instance. The rate limiter and short-lived validated-media cache are process
+local; use a shared Redis/object-storage implementation before enabling
+multiple API instances or relying on media delivery across restarts.
 
 ## How it works
 

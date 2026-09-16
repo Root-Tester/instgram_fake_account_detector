@@ -10,6 +10,12 @@ Store API keys and deployment credentials in environment variables or the hostin
 
 The public model and synthetic training data are not secret. Removing Python files from a public repository does not hide source code; use a private repository and a private build/deployment pipeline when source confidentiality is required.
 
+Production deployments should set `ENVIRONMENT=production`,
+`REQUIRE_API_KEY=true`, and store `API_KEYS` in the hosting provider's secret
+manager. Do not treat `VITE_API_KEY` as a confidential credential: Vite embeds
+it in browser assets. Use a private frontend or an authenticated gateway when
+the client must not expose a shared browser token.
+
 ## Online research safety
 
 Only analyze public URLs that the provider makes available without login. Keep requests bounded, respect provider terms, and review search results manually. Wallet explorer links are leads, not identity attribution.

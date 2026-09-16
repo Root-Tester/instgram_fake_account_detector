@@ -57,6 +57,6 @@ def predict_profile(model: xgb.Booster, profile_data: dict) -> dict:
 
     return {
         "probability_fake": float(prob),
-        "is_fake": prob > 0.5,
+        "is_fake": bool(prob > 0.5),
         "confidence": "High" if prob > 0.8 or prob < 0.2 else "Medium",
     }

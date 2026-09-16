@@ -9,6 +9,7 @@ import os
 import re
 import secrets
 import threading
+import time
 from typing import Any
 from urllib.parse import quote, urlparse
 
@@ -32,7 +33,8 @@ _IMAGE_REJECT_MARKERS = (
     "profile_pic",
 )
 MAX_MEDIA_CACHE_ENTRIES = 128
-_validated_media: dict[str, tuple[str, bytes]] = {}
+MEDIA_CACHE_TTL = 300
+_validated_media: dict[str, tuple[str, bytes, float]] = {}
 _validated_media_lock = threading.Lock()
 
 
@@ -80,6 +82,17 @@ def _fetch_candidate_media(  # pylint: disable=too-many-return-statements
             stream=True,
         )
         response.raise_for_status()
+        response_url = urlparse(str(getattr(response, "url", image_url)))
+        response_host = (response_url.hostname or "").lower()
+        if not (
+            response_host in {"instagram.com", "www.instagram.com"}
+            or response_host.endswith(".cdninstagram.com")
+            or response_host.endswith(".fbcdn.net")
+        ):
+            return {
+                "available": False,
+                "error": "Candidate media redirected to an unapproved host.",
+            }
         declared_length = int(response.headers.get("Content-Length", "0") or 0)
         if declared_length > MAX_IMAGE_BYTES:
             return {
@@ -132,7 +145,7 @@ def _fetch_candidate_media(  # pylint: disable=too-many-return-statements
         if include_content:
             result["_content"] = content
         return result
-    except (requests.RequestException, ValueError, OSError) as exc:
+    except (requests.RequestException, ValueError, OSError):
         return {
             "available": False,
             "error": "Candidate media could not be validated.",
@@ -150,14 +163,21 @@ def publish_validated_media(content: bytes, media_type: str) -> str:
     with _validated_media_lock:
         if len(_validated_media) >= MAX_MEDIA_CACHE_ENTRIES:
             _validated_media.pop(next(iter(_validated_media)))
-        _validated_media[token] = (media_type, content)
+        _validated_media[token] = (media_type, content, time.monotonic() + MEDIA_CACHE_TTL)
     return token
 
 
 def get_validated_media(token: str) -> tuple[str, bytes] | None:
     """Look up media previously validated by this process; never fetches URLs."""
     with _validated_media_lock:
-        return _validated_media.get(token)
+        cached = _validated_media.get(token)
+        if cached is None:
+            return None
+        media_type, content, expires_at = cached
+        if expires_at <= time.monotonic():
+            _validated_media.pop(token, None)
+            return None
+        return media_type, content
 
 
 def validate_post_url(post_url: str) -> str:
@@ -204,7 +224,7 @@ def fetch_public_post(post_url: str) -> dict[str, Any]:
     url = validate_post_url(post_url)
     try:
         response = _request(url)
-    except requests.RequestException as exc:
+    except requests.RequestException:
         return {
             "url": url,
             "accessible": False,
@@ -242,7 +262,7 @@ def _ddg_search(query: str) -> dict[str, Any]:
                 for url, title in matches[:MAX_SOURCES]
             ],
         }
-    except requests.RequestException as exc:
+    except requests.RequestException:
         return {
             "provider": "DuckDuckGo",
             "configured": True,
@@ -273,7 +293,7 @@ def _google_search(query: str) -> dict[str, Any]:
                 for item in payload.get("items", [])[:MAX_SOURCES]
             ],
         }
-    except (requests.RequestException, ValueError) as exc:
+    except (requests.RequestException, ValueError):
         return {
             "provider": "Google",
             "configured": True,
@@ -308,7 +328,7 @@ def _bing_search(query: str) -> dict[str, Any]:
                 for item in payload.get("webPages", {}).get("value", [])
             ],
         }
-    except (requests.RequestException, ValueError) as exc:
+    except (requests.RequestException, ValueError):
         return {
             "provider": "Bing",
             "configured": True,

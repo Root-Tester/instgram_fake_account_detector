@@ -10,6 +10,39 @@ def test_health_endpoint():
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+    assert response.headers["x-request-id"]
+    assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def test_ready_endpoint_reports_model_availability():
+    response = client.get("/ready")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+
+
+def test_request_body_limit_is_enforced(monkeypatch):
+    monkeypatch.setenv("MAX_REQUEST_BYTES", "1024")
+    response = client.post(
+        "/api/v1/profiles/analyze",
+        headers={"Content-Length": "2048"},
+        content=b"{}",
+    )
+    assert response.status_code == 413
+
+
+def test_protected_routes_require_api_key_when_enabled(monkeypatch):
+    monkeypatch.setenv("REQUIRE_API_KEY", "true")
+    monkeypatch.setenv("API_KEYS", "test-key")
+    response = client.post(
+        "/api/v1/profiles/analyze", json={"profile": {"username": "one"}}
+    )
+    assert response.status_code == 401
+    authorized = client.post(
+        "/api/v1/profiles/analyze",
+        headers={"X-API-Key": "test-key"},
+        json={"profile": {"username": "one"}},
+    )
+    assert authorized.status_code in {200, 422}
 
 
 def test_cors_allows_configured_local_frontend_but_not_unknown_origins():

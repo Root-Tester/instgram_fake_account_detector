@@ -2,15 +2,27 @@ services:
   - type: web
     name: instagram-fake-account-detector-api
     runtime: python
-    plan: free
+    plan: starter
     buildCommand: pip install -r requirements.txt
     startCommand: bash run_api.sh
-    healthCheckPath: /health
+    healthCheckPath: /ready
     envVars:
       - key: PYTHON_VERSION
         value: "3.13.0"
       - key: FRONTEND_ORIGINS
         value: https://instagram-fake-account-detector-frontend.onrender.com
+      - key: ENVIRONMENT
+        value: production
+      - key: REQUIRE_API_KEY
+        value: "true"
+      - key: API_KEYS
+        sync: false
+      - key: RATE_LIMIT_REQUESTS
+        value: "120"
+      - key: RATE_LIMIT_WINDOW_SECONDS
+        value: "60"
+      - key: MAX_REQUEST_BYTES
+        value: "262144"
 
   # The React client is deployed separately so it can call the API directly.
   - type: static
@@ -21,3 +33,5 @@ services:
     envVars:
       - key: VITE_API_BASE_URL
         value: https://instagram-fake-account-detector-api.onrender.com
+      - key: VITE_API_KEY
+        sync: false
