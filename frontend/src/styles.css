@@ -6,24 +6,34 @@
     sans-serif;
   color: #edf0ff;
   background: #0b0d17;
+  color-scheme: dark;
 }
 
 * {
   box-sizing: border-box;
 }
 
+*, *::before, *::after {
+  overflow-wrap: anywhere;
+}
+
 body {
   margin: 0;
+  min-width: 320px;
+  overflow-x: hidden;
 }
 
 main {
   width: min(1120px, 100%);
   margin: auto;
-  padding: 2.25rem 1.25rem;
+  padding: clamp(1rem, 4vw, 2.25rem) clamp(0.75rem, 3vw, 1.25rem);
 }
 
 header {
-  margin-bottom: 1.5rem;
+  margin-bottom: clamp(1rem, 3vw, 1.5rem);
+  text-align: center;
+  margin-inline: auto;
+  max-width: 760px;
 }
 
 h1,
@@ -34,8 +44,9 @@ h4 {
 }
 
 h1 {
-  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-size: clamp(1.85rem, 6vw, 3.2rem);
   letter-spacing: -0.04em;
+  line-height: 1.08;
 }
 
 header p,
@@ -58,7 +69,7 @@ nav,
   display: flex;
   gap: 0.55rem;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  margin-bottom: clamp(0.8rem, 2vw, 1rem);
 }
 
 button,
@@ -72,6 +83,9 @@ button,
   font: inherit;
   font-weight: 650;
   display: inline-block;
+  min-height: 2.75rem;
+  max-width: 100%;
+  white-space: normal;
 }
 
 button:hover {
@@ -102,8 +116,10 @@ input[type="file"] {
   background: #161a2a;
   border: 1px solid #2c324a;
   border-radius: 0.75rem;
-  padding: 1rem;
+  padding: clamp(0.8rem, 2.5vw, 1rem);
   margin-bottom: 1rem;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .panel {
@@ -144,10 +160,14 @@ input:not([type="file"]) {
   border-radius: 0.45rem;
   padding: 0.75rem;
   margin: 0.65rem 0 1rem;
+  min-width: 0;
+  font: inherit;
 }
 
 textarea {
-  min-height: 235px;
+  min-height: clamp(180px, 32vh, 300px);
+  max-height: 55vh;
+  resize: vertical;
   font:
     0.88rem/1.45 ui-monospace,
     monospace;
@@ -164,8 +184,8 @@ textarea {
 }
 
 .sample-box {
-  min-height: 150px;
-  padding: 2rem 0;
+  min-height: clamp(120px, 18vh, 150px);
+  padding: clamp(1rem, 4vw, 2rem) 0;
 }
 
 .error,
@@ -201,6 +221,7 @@ textarea {
   justify-content: space-between;
   gap: 1rem;
   flex-wrap: wrap;
+  align-items: baseline;
 }
 
 .result-grid {
@@ -215,6 +236,12 @@ textarea {
   justify-content: space-between;
   gap: 1rem;
   align-items: flex-start;
+  min-width: 0;
+}
+
+.card-heading > *,
+.likelihood-label > * {
+  min-width: 0;
 }
 
 .metrics {
@@ -296,6 +323,7 @@ dl div {
   gap: 1rem;
   border-bottom: 1px solid #2c324a;
   padding: 0.4rem 0;
+  min-width: 0;
 }
 
 dt {
@@ -307,6 +335,7 @@ dd {
   margin: 0;
   text-align: right;
   overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 a {
@@ -321,6 +350,7 @@ a {
 pre {
   overflow: auto;
   white-space: pre-wrap;
+  word-break: break-word;
   color: #cbd0e8;
   font-size: 0.82rem;
 }
@@ -339,7 +369,7 @@ h4 {
 .post-image {
   display: block;
   max-width: 100%;
-  max-height: 62vh;
+  max-height: min(62vh, 680px);
   margin: 0 auto 1rem;
   object-fit: contain;
   border-radius: 0.5rem;
@@ -370,14 +400,22 @@ footer {
 }
 
 @media (max-width: 700px) {
-  main {
-    padding: 1.25rem 0.75rem;
+  nav,
+  .tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  nav button:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .tabs button {
+    width: 100%;
   }
 
   .help {
-    float: none;
     width: 100%;
-    margin: 0 0 1rem;
   }
 
   .card-heading {
@@ -391,5 +429,51 @@ footer {
 
   .metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .result-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  dl div {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  dd {
+    text-align: left;
+    width: 100%;
+  }
+}
+
+@media (min-width: 701px) {
+  .panel > .tabs {
+    align-items: center;
+  }
+
+  .panel > button:last-child {
+    min-width: 10rem;
+  }
+}
+
+@media (min-width: 960px) {
+  .metrics {
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  }
+}
+
+@media (max-height: 640px) {
+  main {
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+  }
+
+  header {
+    margin-bottom: 0.8rem;
+  }
+
+  textarea {
+    min-height: 150px;
+    max-height: 38vh;
   }
 }
