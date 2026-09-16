@@ -24,12 +24,17 @@ def _request(url: str, params: dict[str, str] | None = None) -> requests.Respons
 
 
 def validate_post_url(post_url: str) -> str:
-    parsed = urlparse(post_url.strip())
+    raw_url = post_url.strip()
+    parsed = urlparse(raw_url)
     if parsed.scheme != "https" or parsed.netloc.lower() not in {"instagram.com", "www.instagram.com"}:
         raise ValueError("Enter a public Instagram URL such as https://www.instagram.com/p/POST_ID/.")
-    if not re.search(r"/(p|reel|tv)/[A-Za-z0-9_-]+", parsed.path):
+    if parsed.params or parsed.query or parsed.fragment or parsed.username or parsed.password or parsed.port:
+        raise ValueError("Enter a clean public Instagram post URL without query strings, fragments, credentials, or custom ports.")
+    match = re.fullmatch(r"/(p|reel|tv)/([A-Za-z0-9_-]+)/?", parsed.path)
+    if not match:
         raise ValueError("The URL must point to an Instagram post, reel, or video.")
-    return post_url.strip()
+    post_type, post_id = match.groups()
+    return f"https://www.instagram.com/{post_type}/{post_id}/"
 
 
 def _meta(document: str, name: str) -> str:
