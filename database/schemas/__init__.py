@@ -1,0 +1,1 @@
+"""Versioned persistence schema placeholders."""

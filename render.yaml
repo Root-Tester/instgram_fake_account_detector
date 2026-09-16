@@ -1,9 +1,10 @@
+# One web service builds and serves both the frontend and API on Render's dynamic PORT.
 services:
   - type: web
     name: instagram-fake-account-detector-api
     runtime: python
     plan: starter
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r backend/requirements.txt && npm ci --prefix frontend && npm run build --prefix frontend
     startCommand: bash run_api.sh
     healthCheckPath: /ready
     envVars:
@@ -23,15 +24,5 @@ services:
         value: "60"
       - key: MAX_REQUEST_BYTES
         value: "262144"
-
-  # The React client is deployed separately so it can call the API directly.
-  - type: static
-    name: instagram-fake-account-detector-frontend
-    rootDir: frontend
-    buildCommand: npm ci && npm run build
-    staticPublishPath: dist
-    envVars:
-      - key: VITE_API_BASE_URL
-        value: https://instagram-fake-account-detector-api.onrender.com
       - key: VITE_API_KEY
         sync: false

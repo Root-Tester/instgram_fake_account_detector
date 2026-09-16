@@ -6,11 +6,12 @@ import logging
 import secrets
 import threading
 import time
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -19,6 +20,7 @@ from instgram_fake_account_detector.config import (
     api_key_required,
     api_keys,
     cors_origins,
+    FRONTEND_DIST,
     max_request_bytes,
 )
 from instgram_fake_account_detector.config import rate_limit as configured_rate_limit
@@ -103,9 +105,10 @@ class ProductionBoundaryMiddleware(BaseHTTPMiddleware):
                 )
                 response.headers["X-Request-ID"] = request_id
                 return response
+        is_api_request = request.url.path.startswith("/api/")
         is_capability_media = request.url.path.startswith("/api/v1/media/")
         if (
-            request.url.path not in {"/health", "/ready"}
+            is_api_request
             and not is_capability_media
             and request.method != "OPTIONS"
         ):
@@ -214,6 +217,31 @@ def validated_media(token: str) -> Response:
         media_type=media_type,
         headers={"Cache-Control": "private, max-age=300"},
     )
+
+
+def _frontend_file(path: str = "") -> FileResponse:
+    """Serve a built frontend file or the SPA entry point from the same origin."""
+    index = FRONTEND_DIST / "index.html"
+    if not index.is_file():
+        raise HTTPException(status_code=503, detail="Frontend assets are not ready.")
+    requested = (FRONTEND_DIST / path).resolve()
+    try:
+        requested.relative_to(FRONTEND_DIST.resolve())
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Frontend asset not found.") from exc
+    if requested.is_file():
+        return FileResponse(requested)
+    return FileResponse(index)
+
+
+@app.get("/", include_in_schema=False)
+def frontend_root() -> FileResponse:
+    return _frontend_file()
+
+
+@app.get("/{path:path}", include_in_schema=False)
+def frontend_spa(path: str) -> FileResponse:
+    return _frontend_file(path)
 
 
 __all__ = [

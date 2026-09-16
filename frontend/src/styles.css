@@ -111,14 +111,13 @@ input[type="file"] {
 }
 
 .help {
-  float: right;
-  width: min(330px, 100%);
-  margin-left: 1rem;
+  display: block;
+  width: 100%;
+  clear: both;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 10px 24px #0002;
   color: #d5d9f0;
-}
-
-.help + .panel {
-  min-height: 240px;
 }
 
 .help ul {

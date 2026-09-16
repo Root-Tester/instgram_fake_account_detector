@@ -364,9 +364,8 @@ function PostResult({ result }: { result: JsonObject }) {
 export function App() {
   const [tab, setTab] = useState<"profiles" | "posts">("profiles"),
     [inputTab, setInputTab] = useState<"paste" | "upload" | "sample">("paste");
-  const [profileJson, setProfileJson] = useState(
-      JSON.stringify(PROFILE_EXAMPLE, null, 2),
-    ),
+  const [showInstructions, setShowInstructions] = useState(false);
+  const [profileJson, setProfileJson] = useState(""),
     [postUrl, setPostUrl] = useState("");
   const [result, setResult] = useState<JsonObject | null>(null),
     [profiles, setProfiles] = useState<JsonObject[]>([]),
@@ -538,28 +537,38 @@ export function App() {
         >
           Post analysis
         </button>
+        <button
+          className={showInstructions ? "active" : "secondary"}
+          aria-expanded={showInstructions}
+          aria-controls="usage-instructions"
+          onClick={() => setShowInstructions((visible) => !visible)}
+        >
+          Instructions
+        </button>
       </nav>
       {tab === "profiles" ? (
         <>
-          <aside className="help">
-            <h3>How to use</h3>
-            <p>
-              Paste raw JSON, upload one or more files, or load sample.json.
-              Each payload can be one profile or an array.
-            </p>
-            <ul>
-              <li>
-                <code>username</code> is required
-              </li>
-              <li>followers, followees, mediacount are numeric</li>
-              <li>is_private and is_verified are boolean</li>
-              <li>missing optional values default safely</li>
-            </ul>
-            <details>
-              <summary>Expected JSON template</summary>
-              <pre>{pretty(PROFILE_EXAMPLE)}</pre>
-            </details>
-          </aside>
+          {showInstructions && (
+            <aside className="help" id="usage-instructions">
+              <h3>How to use</h3>
+              <p>
+                Paste raw JSON, upload one or more files, or load sample.json.
+                Each payload can be one profile or an array.
+              </p>
+              <ul>
+                <li>
+                  <code>username</code> is required
+                </li>
+                <li>followers, followees, mediacount are numeric</li>
+                <li>is_private and is_verified are boolean</li>
+                <li>missing optional values default safely</li>
+              </ul>
+              <details>
+                <summary>Expected JSON template</summary>
+                <pre>{pretty(PROFILE_EXAMPLE)}</pre>
+              </details>
+            </aside>
+          )}
           <section className="panel">
             <div className="tabs">
               {(["paste", "upload", "sample"] as const).map((x) => (
@@ -627,24 +636,41 @@ export function App() {
           </section>
         </>
       ) : (
-        <section className="panel">
-          <h2>Post analysis</h2>
-          <p className="muted">
-            Research a public Instagram post, reel, or video using bounded
-            public metadata and search providers. Private posts and login walls
-            are not bypassed.
-          </p>
-          <label htmlFor="post-url">Instagram post link</label>
-          <input
-            id="post-url"
-            value={postUrl}
-            onChange={(e) => setPostUrl(e.target.value)}
-            placeholder="https://www.instagram.com/p/POST_ID/"
-          />
-          <button onClick={analyzePost} disabled={loading || !postUrl.trim()}>
-            {loading ? "Fetching public evidence…" : "Run post analysis"}
-          </button>
-        </section>
+        <>
+          {showInstructions && (
+            <aside className="help" id="usage-instructions">
+              <h3>How to use post analysis</h3>
+              <p>
+                Enter a public Instagram post, reel, or video URL, then run the
+                analysis to review available metadata and evidence.
+              </p>
+              <ul>
+                <li>Use a clean HTTPS Instagram URL</li>
+                <li>Private posts and login walls are not bypassed</li>
+                <li>Search results are leads for human review</li>
+                <li>Risk scores are not proof of fraud or identity</li>
+              </ul>
+            </aside>
+          )}
+          <section className="panel">
+            <h2>Post analysis</h2>
+            <p className="muted">
+              Research a public Instagram post, reel, or video using bounded
+              public metadata and search providers. Private posts and login walls
+              are not bypassed.
+            </p>
+            <label htmlFor="post-url">Instagram post link</label>
+            <input
+              id="post-url"
+              value={postUrl}
+              onChange={(e) => setPostUrl(e.target.value)}
+              placeholder="https://www.instagram.com/p/POST_ID/"
+            />
+            <button onClick={analyzePost} disabled={loading || !postUrl.trim()}>
+              {loading ? "Fetching public evidence…" : "Run post analysis"}
+            </button>
+          </section>
+        </>
       )}
       {warnings.map((w) => (
         <p className="warning" key={w}>

@@ -30,7 +30,7 @@ The Post Analysis tab produces an evidence report for a public Instagram post. I
 Post content also supports supervised training. The optional model uses TF-IDF word n-grams and balanced logistic regression over human-labeled post text. Create a JSONL, JSON list, or JSON mapping with `text` (or `caption`) and `label` (real/ fake, 0/1), then run:
 
 ```bash
-PYTHONPATH=src ./.venv/bin/python scripts/train_post_model.py data/posts/labeled_posts.jsonl --output models/post_content_model.joblib
+PYTHONPATH=backend/app ./.venv/bin/python scripts/train_post_model.py data/posts/labeled_posts.jsonl --output models/post_content_model.joblib
 ```
 
 The script prints held-out accuracy, ROC AUC, and a classification report. When `post_content_model.joblib` exists, Post Analysis displays its fake probability and combines it with the transparent content rules. A model trained on a small or biased dataset is not reliable; use independently reviewed examples and keep real and fake classes represented.
@@ -46,25 +46,54 @@ It is designed as a lightweight batch-analysis tool for reviewing one or many pr
 ## Project structure
 
 - **Frontend:** `frontend/` — lightweight Vite/React TypeScript client.
-- **API:** `src/instgram_fake_account_detector/api.py` — typed FastAPI routes for health, profile, batch, post, and validated media delivery.
-- **Backend analysis:** `src/instgram_fake_account_detector/predictor.py`, `advanced_analysis.py`, `post_analysis.py`, `validators.py`, `data_io.py` — feature extraction, evidence scoring, and public research.
-- **Models:** `src/instgram_fake_account_detector/model_loader.py`, `post_model.py`, `models/` — supervised model loading and inference.
+- **Backend:** `backend/app/` — FastAPI entry point, typed routes, analysis services, validators, model loading, and SDK implementation.
+- **Database boundary:** `database/` — persistence interfaces and migration placeholders; no concrete database is enabled yet.
+- **Models:** `backend/app/instgram_fake_account_detector/model_loader.py`, `post_model.py`, `models/` — supervised model loading and inference.
 - **Training:** `scripts/train_profile_model.py`, `scripts/train_post_model.py`, `scripts/generate_post_dataset.py` — reproducible model and dataset workflows.
 - **Data:** `data/profiles/`, `data/posts/`; examples live in `examples/`.
 - **Integration:** `sdk.py`, `n8n/` — programmatic access and optional automation.
-- **Runtime:** `run_api.sh`, `requirements.txt`, `requirements-dev.txt` — local deployment and dependencies.
+- **Runtime:** `run_api.sh`, `backend/requirements.txt`, `backend/requirements-dev.txt` — local deployment and dependencies.
 
-The root `sdk.py` file is a compatibility shim. The categorized package under `src/` is the maintained implementation.
+The root `sdk.py` file is a compatibility shim. The maintained Python package
+is under `backend/app/instgram_fake_account_detector/`.
+
+Version 2.0 keeps the repository root as the only project root and separates
+ownership by boundary:
+
+```text
+backend/    FastAPI application, Python package, tests, and dependencies
+database/   persistence interfaces and migration placeholders only
+frontend/   React/Vite client
+shared/     cross-layer contracts and types
+models/     reviewed model artifacts
+data/       public/sample/training data
+scripts/    training and maintenance commands
+infra/      deployment documentation (Render manifest stays at root)
+docs/       architecture and operations documentation
+```
+
+There is no `backend` database implementation yet and no second folder named
+after the repository. The `backend/app/instgram_fake_account_detector/`
+directory is the Python import package required by the backend.
 
 ## React and FastAPI development
 
-Start the API:
+Start both the FastAPI backend and Vite frontend with one command:
+
+```bash
+bash run_dev.sh
+```
+
+This starts the backend at `http://127.0.0.1:8000` and the Vite frontend at
+`http://127.0.0.1:5173`. Press `Ctrl+C` once to stop both processes.
+
+To run them separately:
 
 ```bash
 bash run_api.sh
 ```
 
-Start the lightweight frontend in another terminal:
+In another terminal:
 
 ```bash
 cd frontend
@@ -73,6 +102,9 @@ npm run dev
 ```
 
 The Vite development server proxies `/api` requests to `http://localhost:8000`.
+For a production-like single-service run, build the frontend with
+`cd frontend && npm run build`, then run `bash run_api.sh`; FastAPI serves the
+generated `frontend/dist` files and the API on one port.
 The post-analysis API validates and caches public image bytes before exposing a
 tokenized `/api/v1/media/` reference, so login pages, logos, and HTML responses
 are not rendered as post images.
@@ -82,22 +114,16 @@ the FastAPI API and SDK.
 
 ## Render deployment
 
-The repository is configured as two Render services in [render.yaml](./render.yaml):
+The repository deploys as one Render Python web service in
+[render.yaml](./render.yaml). Render installs the Python dependencies, builds
+the React app into `frontend/dist`, and starts FastAPI. FastAPI serves both the
+React application and `/api/*` routes from the same origin and Render-provided
+dynamic `PORT`. The client never chooses a public port.
 
-1. A Python web service named `instagram-fake-account-detector-api`.
-   Render installs `requirements.txt`, runs `bash run_api.sh`, and checks
-   `/ready`.
-2. A static site named `instagram-fake-account-detector-frontend`.
-   Render runs `npm ci && npm run build` from `frontend/` and publishes `dist/`.
-
-Create a Render Blueprint from the repository and apply `render.yaml`. If Render
-assigns different service URLs, update `FRONTEND_ORIGINS` on the API service and
-`VITE_API_BASE_URL` on the frontend service to match those URLs, then redeploy
-both services. Do not put API keys in the frontend environment because Vite
-embeds `VITE_*` values into browser assets.
-
-The frontend and backend are intentionally separate deployments. The frontend
-calls the backend over HTTPS; it does not run Python or model inference.
+Create a Render Blueprint from the repository and apply `render.yaml`. Do not
+set `VITE_API_BASE_URL` for this topology; the frontend uses relative,
+same-origin API requests. `VITE_API_KEY` is browser-visible by design and is
+not a confidential secret.
 
 For production, set `ENVIRONMENT=production`, `REQUIRE_API_KEY=true`, and
 configure `API_KEYS` as a Render secret. The frontend's `VITE_API_KEY` is a
@@ -124,19 +150,18 @@ multiple API instances or relying on media delivery across restarts.
 Start the API from the project directory:
 
 ```bash
-cd /workspaces/instgram_fake_account_detector
 bash run_api.sh
 ```
 
-Open the frontend at:
+Open the combined application at:
 
 ```text
-http://127.0.0.1:5173
+http://127.0.0.1:8000
 ```
 
 `run_api.sh` binds to `0.0.0.0` and uses the `PORT` environment variable when
-provided by a host such as Render. The included `render.yaml` deploys the API
-and React static site separately.
+provided by a host such as Render. The included `render.yaml` builds and
+deploys the API and React application together.
 
 For a configuration-driven Bash launch:
 
@@ -152,9 +177,9 @@ Do not commit `.env`, API keys, private datasets, or user uploads. See [SECURITY
 Install the development dependencies and run the same checks used by GitHub Actions:
 
 ```bash
-./.venv/bin/python -m pip install -r requirements-dev.txt
-PYTHONPATH=src ./.venv/bin/python -m pylint --rcfile=.pylintrc src scripts tests
-PYTHONPATH=src ./.venv/bin/python -m pytest -q
+./.venv/bin/python -m pip install -r backend/requirements-dev.txt
+PYTHONPATH=backend/app ./.venv/bin/python -m pylint --rcfile=backend/.pylintrc backend/app scripts backend/tests
+PYTHONPATH=backend/app ./.venv/bin/python -m pytest -q backend/tests
 ```
 
 The `n8n/github-quality-dispatch.json` export provides an optional webhook that
@@ -259,7 +284,7 @@ To call the Render-hosted backend instead of loading the model locally:
 from sdk import FakeProfileDetectorSDK
 
 sdk = FakeProfileDetectorSDK(
-    api_base_url="https://instagram-fake-account-detector-api.onrender.com"
+    api_base_url="https://instagram-fake-account-detector.onrender.com"
 )
 print(sdk.health())
 result = sdk.predict_profile(profile)

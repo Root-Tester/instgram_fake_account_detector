@@ -1,4 +1,4 @@
-export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 const API_KEY = import.meta.env.VITE_API_KEY ?? "";
 
 export async function postJson<T>(path: string, body: unknown): Promise<T> {

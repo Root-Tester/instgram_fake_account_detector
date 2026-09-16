@@ -20,6 +20,34 @@ def test_ready_endpoint_reports_model_availability():
     assert response.json()["status"] == "ok"
 
 
+def test_frontend_fallback_and_asset_serving(monkeypatch, tmp_path):
+    (tmp_path / "index.html").write_text("<html>app</html>", encoding="utf-8")
+    (tmp_path / "assets").mkdir()
+    (tmp_path / "assets" / "app.js").write_text("console.log('app')", encoding="utf-8")
+    monkeypatch.setattr(api, "FRONTEND_DIST", tmp_path)
+
+    root = client.get("/")
+    spa = client.get("/review/account")
+    asset = client.get("/assets/app.js")
+
+    assert root.status_code == 200
+    assert spa.status_code == 200
+    assert spa.text == root.text
+    assert "console.log" in asset.text
+
+
+def test_production_api_key_does_not_block_frontend(monkeypatch, tmp_path):
+    (tmp_path / "index.html").write_text("<html>app</html>", encoding="utf-8")
+    monkeypatch.setattr(api, "FRONTEND_DIST", tmp_path)
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("REQUIRE_API_KEY", "true")
+    monkeypatch.setenv("API_KEYS", "test-key")
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+
+
 def test_request_body_limit_is_enforced(monkeypatch):
     monkeypatch.setenv("MAX_REQUEST_BYTES", "1024")
     response = client.post(
