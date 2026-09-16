@@ -8,16 +8,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from pathlib import Path
 from typing import Any
-
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from sklearn.metrics import accuracy_score, classification_report, roc_auc_score
 from sklearn.model_selection import train_test_split
 
-from post_model import build_post_model, normalize_post_label, save_post_model
 from instgram_fake_account_detector.config import POST_DATA_PATH, POST_MODEL_PATH
 from instgram_fake_account_detector.post_model import build_post_model, normalize_post_label, save_post_model
 

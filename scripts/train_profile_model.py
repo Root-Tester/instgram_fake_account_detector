@@ -1,14 +1,8 @@
 import json
+
 import numpy as np
 import pandas as pd
 import xgboost as xgb
-from pathlib import Path
-
-import sys
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from instgram_fake_account_detector.config import MODEL_PATH, PROFILE_DATA_PATH
-
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     accuracy_score,
     precision_score,
@@ -17,6 +11,9 @@ from sklearn.metrics import (
     roc_auc_score,
     confusion_matrix,
 )
+from sklearn.model_selection import train_test_split
+
+from instgram_fake_account_detector.config import MODEL_PATH, PROFILE_DATA_PATH
 
 # ==============================
 # LOAD DATASET
