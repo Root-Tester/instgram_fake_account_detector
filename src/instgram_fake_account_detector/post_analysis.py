@@ -3,36 +3,187 @@
 from __future__ import annotations
 
 import html
+import hashlib
+import io
 import os
 import re
+import secrets
+import threading
 from typing import Any
 from urllib.parse import quote, urlparse
 
 import requests
-from instgram_fake_account_detector.post_model import load_post_model, predict_post_content
-
+from instgram_fake_account_detector.post_model import (
+    load_post_model,
+    predict_post_content,
+)
 
 USER_AGENT = "FakeProfileDetector/1.0 (public research; contact repository owner)"
 TIMEOUT = 12
 MAX_SOURCES = 5
+MAX_IMAGE_BYTES = 8 * 1024 * 1024
+IMAGE_TIMEOUT = (3, 10)
+_IMAGE_REJECT_MARKERS = (
+    "login",
+    "log_in",
+    "checkpoint",
+    "logo",
+    "avatar",
+    "profile_pic",
+)
+MAX_MEDIA_CACHE_ENTRIES = 128
+_validated_media: dict[str, tuple[str, bytes]] = {}
+_validated_media_lock = threading.Lock()
 
 
 def _request(url: str, params: dict[str, str] | None = None) -> requests.Response:
-    response = requests.get(url, params=params, headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT)
+    response = requests.get(
+        url, params=params, headers={"User-Agent": USER_AGENT}, timeout=TIMEOUT
+    )
     response.raise_for_status()
     return response
+
+
+def _fetch_candidate_media(  # pylint: disable=too-many-return-statements
+    image_url: str, *, include_content: bool = False
+) -> dict[str, Any]:
+    """Fetch and validate candidate post media without trusting remote metadata.
+
+    The response is bounded before Pillow parses it, and a successful result
+    contains only safe, local metadata for API/UI consumers (never HTML or an
+    unvalidated remote response).
+    """
+    parsed = urlparse(image_url.strip())
+    if parsed.scheme != "https" or not parsed.netloc:
+        return {"available": False, "error": "Candidate media must use HTTPS."}
+    hostname = (parsed.hostname or "").lower()
+    if not (
+        hostname in {"instagram.com", "www.instagram.com"}
+        or hostname.endswith(".cdninstagram.com")
+        or hostname.endswith(".fbcdn.net")
+    ):
+        return {
+            "available": False,
+            "error": "Candidate media host is not an approved Instagram media host.",
+        }
+    lowered = f"{parsed.path}?{parsed.query}".lower()
+    if any(marker in lowered for marker in _IMAGE_REJECT_MARKERS):
+        return {
+            "available": False,
+            "error": "Candidate media appears to be a login, avatar, or logo asset.",
+        }
+    try:
+        response = requests.get(
+            image_url,
+            headers={"User-Agent": USER_AGENT, "Accept": "image/*"},
+            timeout=IMAGE_TIMEOUT,
+            stream=True,
+        )
+        response.raise_for_status()
+        declared_length = int(response.headers.get("Content-Length", "0") or 0)
+        if declared_length > MAX_IMAGE_BYTES:
+            return {
+                "available": False,
+                "error": "Candidate media exceeds the size limit.",
+            }
+        chunks: list[bytes] = []
+        total = 0
+        iterator = (
+            response.iter_content(64 * 1024)
+            if hasattr(response, "iter_content")
+            else [response.content]
+        )
+        for chunk in iterator:
+            if not chunk:
+                continue
+            total += len(chunk)
+            if total > MAX_IMAGE_BYTES:
+                return {
+                    "available": False,
+                    "error": "Candidate media exceeds the size limit.",
+                }
+            chunks.append(chunk)
+        content = b"".join(chunks)
+        content_type = response.headers.get("Content-Type", "").split(";", 1)[0].lower()
+        if content.lstrip()[:20].lower().startswith((b"<!doctype", b"<html", b"<?xml")):
+            return {
+                "available": False,
+                "error": "Candidate media is HTML, not an image.",
+            }
+        from PIL import Image
+
+        with Image.open(io.BytesIO(content)) as image:
+            image.verify()
+            media_type = Image.MIME.get(image.format, content_type)
+            width, height = image.size
+        if not media_type.startswith("image/"):
+            return {
+                "available": False,
+                "error": "Candidate media is not a supported image.",
+            }
+        result = {
+            "available": True,
+            "bytes": len(content),
+            "media_type": media_type,
+            "width": width,
+            "height": height,
+            "sha256": hashlib.sha256(content).hexdigest(),
+        }
+        if include_content:
+            result["_content"] = content
+        return result
+    except (requests.RequestException, ValueError, OSError) as exc:
+        return {
+            "available": False,
+            "error": f"Candidate media could not be validated: {exc}",
+        }
+
+
+def fetch_candidate_media(image_url: str) -> dict[str, Any]:
+    """Return validated media metadata without exposing downloaded bytes."""
+    return _fetch_candidate_media(image_url)
+
+
+def publish_validated_media(content: bytes, media_type: str) -> str:
+    """Keep validated bytes behind an opaque, same-origin capability token."""
+    token = secrets.token_urlsafe(24)
+    with _validated_media_lock:
+        if len(_validated_media) >= MAX_MEDIA_CACHE_ENTRIES:
+            _validated_media.pop(next(iter(_validated_media)))
+        _validated_media[token] = (media_type, content)
+    return token
+
+
+def get_validated_media(token: str) -> tuple[str, bytes] | None:
+    """Look up media previously validated by this process; never fetches URLs."""
+    with _validated_media_lock:
+        return _validated_media.get(token)
 
 
 def validate_post_url(post_url: str) -> str:
     raw_url = post_url.strip()
     parsed = urlparse(raw_url)
-    if parsed.scheme != "https" or parsed.netloc.lower() not in {"instagram.com", "www.instagram.com"}:
-        raise ValueError("Enter a public Instagram URL such as https://www.instagram.com/p/POST_ID/.")
+    if parsed.scheme != "https" or parsed.netloc.lower() not in {
+        "instagram.com",
+        "www.instagram.com",
+    }:
+        raise ValueError(
+            "Enter a public Instagram URL such as https://www.instagram.com/p/POST_ID/."
+        )
     has_disallowed_components = any(
-        (parsed.params, parsed.query, parsed.fragment, parsed.username, parsed.password, parsed.port)
+        (
+            parsed.params,
+            parsed.query,
+            parsed.fragment,
+            parsed.username,
+            parsed.password,
+            parsed.port,
+        )
     )
     if has_disallowed_components:
-        raise ValueError("Enter a clean public Instagram post URL without query strings, fragments, credentials, or custom ports.")
+        raise ValueError(
+            "Enter a clean public Instagram post URL without query strings, fragments, credentials, or custom ports."
+        )
     match = re.fullmatch(r"/(p|reel|tv)/([A-Za-z0-9_-]+)/?", parsed.path)
     if not match:
         raise ValueError("The URL must point to an Instagram post, reel, or video.")
@@ -54,7 +205,11 @@ def fetch_public_post(post_url: str) -> dict[str, Any]:
     try:
         response = _request(url)
     except requests.RequestException as exc:
-        return {"url": url, "accessible": False, "error": f"Public page could not be fetched: {exc}"}
+        return {
+            "url": url,
+            "accessible": False,
+            "error": f"Public page could not be fetched: {exc}",
+        }
 
     document = response.text
     image_url = _meta(document, "og:image")
@@ -74,42 +229,98 @@ def fetch_public_post(post_url: str) -> dict[str, Any]:
 def _ddg_search(query: str) -> dict[str, Any]:
     try:
         response = _request("https://html.duckduckgo.com/html/", {"q": query})
-        matches = re.findall(r'class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>', response.text, flags=re.IGNORECASE | re.DOTALL)
+        matches = re.findall(
+            r'class="result__a"[^>]+href="([^"]+)"[^>]*>(.*?)</a>',
+            response.text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
         return {
             "provider": "DuckDuckGo",
             "configured": True,
-            "results": [{"url": html.unescape(url), "title": re.sub(r"<[^>]+>", "", title)} for url, title in matches[:MAX_SOURCES]],
+            "results": [
+                {"url": html.unescape(url), "title": re.sub(r"<[^>]+>", "", title)}
+                for url, title in matches[:MAX_SOURCES]
+            ],
         }
     except requests.RequestException as exc:
-        return {"provider": "DuckDuckGo", "configured": True, "results": [], "error": str(exc)}
+        return {
+            "provider": "DuckDuckGo",
+            "configured": True,
+            "results": [],
+            "error": str(exc),
+        }
 
 
 def _google_search(query: str) -> dict[str, Any]:
     key, engine = os.getenv("GOOGLE_API_KEY"), os.getenv("GOOGLE_CSE_ID")
     if not key or not engine:
-        return {"provider": "Google", "configured": False, "results": [], "note": "Set GOOGLE_API_KEY and GOOGLE_CSE_ID for Google Custom Search."}
+        return {
+            "provider": "Google",
+            "configured": False,
+            "results": [],
+            "note": "Set GOOGLE_API_KEY and GOOGLE_CSE_ID for Google Custom Search.",
+        }
     try:
-        payload = _request("https://www.googleapis.com/customsearch/v1", {"key": key, "cx": engine, "q": query}).json()
-        return {"provider": "Google", "configured": True, "results": [{"url": item.get("link"), "title": item.get("title")} for item in payload.get("items", [])[:MAX_SOURCES]]}
+        payload = _request(
+            "https://www.googleapis.com/customsearch/v1",
+            {"key": key, "cx": engine, "q": query},
+        ).json()
+        return {
+            "provider": "Google",
+            "configured": True,
+            "results": [
+                {"url": item.get("link"), "title": item.get("title")}
+                for item in payload.get("items", [])[:MAX_SOURCES]
+            ],
+        }
     except (requests.RequestException, ValueError) as exc:
-        return {"provider": "Google", "configured": True, "results": [], "error": str(exc)}
+        return {
+            "provider": "Google",
+            "configured": True,
+            "results": [],
+            "error": str(exc),
+        }
 
 
 def _bing_search(query: str) -> dict[str, Any]:
     key = os.getenv("BING_SEARCH_KEY")
     if not key:
-        return {"provider": "Bing", "configured": False, "results": [], "note": "Set BING_SEARCH_KEY for Bing Web Search."}
+        return {
+            "provider": "Bing",
+            "configured": False,
+            "results": [],
+            "note": "Set BING_SEARCH_KEY for Bing Web Search.",
+        }
     try:
-        response = requests.get("https://api.bing.microsoft.com/v7.0/search", params={"q": query, "count": MAX_SOURCES}, headers={"Ocp-Apim-Subscription-Key": key, "User-Agent": USER_AGENT}, timeout=TIMEOUT)
+        response = requests.get(
+            "https://api.bing.microsoft.com/v7.0/search",
+            params={"q": query, "count": MAX_SOURCES},
+            headers={"Ocp-Apim-Subscription-Key": key, "User-Agent": USER_AGENT},
+            timeout=TIMEOUT,
+        )
         response.raise_for_status()
         payload = response.json()
-        return {"provider": "Bing", "configured": True, "results": [{"url": item.get("url"), "title": item.get("name")} for item in payload.get("webPages", {}).get("value", [])]}
+        return {
+            "provider": "Bing",
+            "configured": True,
+            "results": [
+                {"url": item.get("url"), "title": item.get("name")}
+                for item in payload.get("webPages", {}).get("value", [])
+            ],
+        }
     except (requests.RequestException, ValueError) as exc:
-        return {"provider": "Bing", "configured": True, "results": [], "error": str(exc)}
+        return {
+            "provider": "Bing",
+            "configured": True,
+            "results": [],
+            "error": str(exc),
+        }
 
 
 def search_web(post: dict[str, Any]) -> list[dict[str, Any]]:
-    query = " ".join(part for part in [post.get("title", ""), post.get("description", "")] if part).strip()[:400]
+    query = " ".join(
+        part for part in [post.get("title", ""), post.get("description", "")] if part
+    ).strip()[:400]
     if not query:
         query = post.get("url", "")
     return [_ddg_search(query), _google_search(query), _bing_search(query)]
@@ -120,7 +331,9 @@ def _search_query(post: dict[str, Any], suffix: str = "") -> str:
     return f"{text[:320]} {suffix}".strip()
 
 
-def _search_official_sources(post: dict[str, Any], claim_type: str) -> list[dict[str, Any]]:
+def _search_official_sources(
+    post: dict[str, Any], claim_type: str
+) -> list[dict[str, Any]]:
     """Search restricted official domains; a result is evidence to review, not proof."""
     suffix = {
         "news": "site:gov OR site:gov.uk OR site:who.int OR site:un.org",
@@ -131,8 +344,7 @@ def _search_official_sources(post: dict[str, Any], claim_type: str) -> list[dict
     query = _search_query(post, suffix)
     providers = [_ddg_search(query), _google_search(query), _bing_search(query)]
     return [
-        {**provider, "claim_type": claim_type, "query": query}
-        for provider in providers
+        {**provider, "claim_type": claim_type, "query": query} for provider in providers
     ]
 
 
@@ -170,7 +382,12 @@ def analyze_post_content(text: str) -> dict[str, Any]:
     ]
     exclamation_count = normalized.count("!")
     all_caps_words = re.findall(r"\b[A-Z]{4,}\b", normalized)
-    risk_score = min(1.0, len(signals) * 0.16 + min(exclamation_count, 4) * 0.03 + min(len(all_caps_words), 4) * 0.03)
+    risk_score = min(
+        1.0,
+        len(signals) * 0.16
+        + min(exclamation_count, 4) * 0.03
+        + min(len(all_caps_words), 4) * 0.03,
+    )
     return {
         "text_available": bool(normalized),
         "character_count": len(normalized),
@@ -182,7 +399,9 @@ def analyze_post_content(text: str) -> dict[str, Any]:
     }
 
 
-def enrich_content_with_supervised_model(content: dict[str, Any], text: str) -> dict[str, Any]:
+def enrich_content_with_supervised_model(
+    content: dict[str, Any], text: str
+) -> dict[str, Any]:
     """Add trained text probability when an optional post model is available."""
     try:
         prediction = predict_post_content(load_post_model(), text)
@@ -193,7 +412,9 @@ def enrich_content_with_supervised_model(content: dict[str, Any], text: str) -> 
         "method": "No trained post model found; using transparent content rules only.",
     }
     if prediction:
-        content["content_risk"] = round(max(content["content_risk"], prediction["fake_probability"]), 3)
+        content["content_risk"] = round(
+            max(content["content_risk"], prediction["fake_probability"]), 3
+        )
     return content
 
 
@@ -202,7 +423,13 @@ def _flatten_sources(search_engines: list[dict[str, Any]]) -> list[dict[str, str
     for engine in search_engines:
         for item in engine.get("results", []):
             if item.get("url"):
-                sources.append({"provider": str(engine.get("provider", "search")), "title": str(item.get("title", "")), "url": str(item["url"])})
+                sources.append(
+                    {
+                        "provider": str(engine.get("provider", "search")),
+                        "title": str(item.get("title", "")),
+                        "url": str(item["url"]),
+                    }
+                )
     return sources
 
 
@@ -217,28 +444,51 @@ def build_post_report(result: dict[str, Any]) -> dict[str, Any]:
     blockchain = result.get("blockchain", {})
     evidence: list[dict[str, Any]] = [
         {
-            "finding": "Public Instagram metadata was retrieved" if post.get("accessible") else "Public Instagram metadata was not retrieved",
-            "effect": "supports-observation" if post.get("accessible") else "limits-conclusion",
+            "finding": (
+                "Public Instagram metadata was retrieved"
+                if post.get("accessible")
+                else "Public Instagram metadata was not retrieved"
+            ),
+            "effect": (
+                "supports-observation"
+                if post.get("accessible")
+                else "limits-conclusion"
+            ),
             "source": post.get("url"),
         },
         {
             "finding": f"Image quality risk score: {image.get('image_risk', 0):.1%}",
-            "effect": "supports-risk" if image.get("image_risk", 0) >= 0.5 else "neutral",
+            "effect": (
+                "supports-risk" if image.get("image_risk", 0) >= 0.5 else "neutral"
+            ),
             "source": post.get("image_url"),
         },
         {
             "finding": f"{len(blockchain.get('addresses_found', []))} public wallet address(es) extracted",
-            "effect": "supports-verification" if blockchain.get("addresses_found") else "neutral",
+            "effect": (
+                "supports-verification"
+                if blockchain.get("addresses_found")
+                else "neutral"
+            ),
             "source": post.get("url"),
         },
         {
             "finding": f"Post content risk score: {content.get('content_risk', 0):.1%}",
-            "effect": "supports-risk" if content.get("content_risk", 0) >= 0.3 else "neutral",
+            "effect": (
+                "supports-risk" if content.get("content_risk", 0) >= 0.3 else "neutral"
+            ),
             "source": post.get("url"),
         },
     ]
     for source in sources[:MAX_SOURCES]:
-        evidence.append({"finding": source["title"] or "Search result found", "effect": "requires-human-review", "source": source["url"], "provider": source["provider"]})
+        evidence.append(
+            {
+                "finding": source["title"] or "Search result found",
+                "effect": "requires-human-review",
+                "source": source["url"],
+                "provider": source["provider"],
+            }
+        )
 
     risk_points = 0.0
     if not post.get("accessible"):
@@ -247,7 +497,10 @@ def build_post_report(result: dict[str, Any]) -> dict[str, Any]:
     risk_points += float(content.get("content_risk", 0)) * 0.5
     if blockchain.get("addresses_found"):
         risk_points += 0.3
-    if any(claim in {"job-vacancy", "offer-or-giveaway", "crypto-or-payment"} for claim in claims):
+    if any(
+        claim in {"job-vacancy", "offer-or-giveaway", "crypto-or-payment"}
+        for claim in claims
+    ):
         risk_points += 0.2
     if sources:
         risk_points -= 0.1
@@ -297,9 +550,18 @@ def reverse_image_search_links(image_url: str) -> list[dict[str, str]]:
         return []
     encoded = quote(image_url, safe="")
     return [
-        {"provider": "Google Lens", "url": f"https://lens.google.com/uploadbyurl?url={encoded}"},
-        {"provider": "Bing Visual Search", "url": f"https://www.bing.com/images/searchbyimage?cbir=sbi&imgurl={encoded}"},
-        {"provider": "Yandex Images", "url": f"https://yandex.com/images/search?rpt=imageview&url={encoded}"},
+        {
+            "provider": "Google Lens",
+            "url": f"https://lens.google.com/uploadbyurl?url={encoded}",
+        },
+        {
+            "provider": "Bing Visual Search",
+            "url": f"https://www.bing.com/images/searchbyimage?cbir=sbi&imgurl={encoded}",
+        },
+        {
+            "provider": "Yandex Images",
+            "url": f"https://yandex.com/images/search?rpt=imageview&url={encoded}",
+        },
     ]
 
 
@@ -314,8 +576,14 @@ def trace_blockchain_sources(text: str) -> dict[str, Any]:
     addresses: list[dict[str, str]] = []
     for chain, pattern in WALLET_PATTERNS.items():
         for address in dict.fromkeys(pattern.findall(text)):
-            explorer = {"ethereum": "https://etherscan.io/address/", "bitcoin": "https://www.blockchain.com/explorer/addresses/btc/", "solana": "https://solscan.io/account/"}[chain]
-            addresses.append({"chain": chain, "address": address, "explorer_url": explorer + address})
+            explorer = {
+                "ethereum": "https://etherscan.io/address/",
+                "bitcoin": "https://www.blockchain.com/explorer/addresses/btc/",
+                "solana": "https://solscan.io/account/",
+            }[chain]
+            addresses.append(
+                {"chain": chain, "address": address, "explorer_url": explorer + address}
+            )
     return {
         "addresses_found": addresses,
         "trace_note": "Addresses are extracted from public text only. Explorer links are provided for human verification; no wallet is attributed to a person automatically.",
@@ -328,7 +596,10 @@ def analyze_post(post_url: str) -> dict[str, Any]:
         result = {
             "post": post,
             "image_analysis": {"image_available": False, "image_risk": 0.0},
-            "content_analysis": enrich_content_with_supervised_model(analyze_post_content(post.get("description", "")), post.get("description", "")),
+            "content_analysis": enrich_content_with_supervised_model(
+                analyze_post_content(post.get("description", "")),
+                post.get("description", ""),
+            ),
             "search_engines": [],
             "reverse_image_links": [],
             "blockchain": trace_blockchain_sources(post.get("description", "")),
@@ -337,18 +608,39 @@ def analyze_post(post_url: str) -> dict[str, Any]:
         }
         result["report"] = build_post_report(result)
         return result
-    combined_text = " ".join(str(post.get(key, "")) for key in ("title", "description", "url"))
+    combined_text = " ".join(
+        str(post.get(key, "")) for key in ("title", "description", "url")
+    )
     image_analysis: dict[str, Any] = {"image_available": False, "image_risk": 0.0}
+    image_media: dict[str, Any] = {"available": False}
+    image_reference: str | None = None
     if post.get("image_url"):
-        try:
-            image_response = _request(post["image_url"])
+        image_media = _fetch_candidate_media(post["image_url"], include_content=True)
+        if image_media.get("available"):
             from instgram_fake_account_detector.advanced_analysis import analyze_image
 
-            image_analysis = analyze_image({"image_bytes": image_response.content})
-        except requests.RequestException as exc:
-            image_analysis = {"image_available": False, "image_risk": 0.0, "error": str(exc)}
+            content = image_media.pop("_content", b"")
+            image_reference = publish_validated_media(
+                content, str(image_media["media_type"])
+            )
+            image_analysis = analyze_image({"image_bytes": content})
+        else:
+            image_analysis = {
+                "image_available": False,
+                "image_risk": 0.0,
+                "error": image_media.get("error"),
+            }
+            # Do not pass an arbitrary remote URL to the UI or reverse-search
+            # links when the server could not establish that it is an image.
+            post["image_url"] = ""
+    if image_reference:
+        post["image_reference"] = f"/api/v1/media/{image_reference}"
+    else:
+        post.pop("image_reference", None)
     claims = classify_claims(combined_text)
-    content_analysis = enrich_content_with_supervised_model(analyze_post_content(combined_text), combined_text)
+    content_analysis = enrich_content_with_supervised_model(
+        analyze_post_content(combined_text), combined_text
+    )
     official_sources = [
         {"claim_type": claim, "sources": _search_official_sources(post, claim)}
         for claim in claims
@@ -357,6 +649,10 @@ def analyze_post(post_url: str) -> dict[str, Any]:
     result = {
         "post": post,
         "image_analysis": image_analysis,
+        "image_media": image_media,
+        "image_reference": (
+            f"/api/v1/media/{image_reference}" if image_reference else None
+        ),
         "content_analysis": content_analysis,
         "search_engines": search_web(post),
         "reverse_image_links": reverse_image_search_links(post.get("image_url", "")),

@@ -8,7 +8,6 @@ version = "2.01.0"
 description = "Explainable Instagram profile and public post risk analysis"
 requires-python = ">=3.10"
 dependencies = [
-  "streamlit",
   "pandas",
   "numpy",
   "xgboost",
@@ -17,6 +16,8 @@ dependencies = [
   "pillow",
   "requests",
   "joblib",
+  "fastapi",
+  "uvicorn",
 ]
 
 [tool.setuptools.packages.find]

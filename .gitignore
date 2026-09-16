@@ -1,7 +1,8 @@
 .venv/
+frontend/node_modules/
+frontend/dist/
 __pycache__/
 .pytest_cache/
-.streamlit/
 *.pyc
 .DS_Store
 

@@ -15,10 +15,6 @@ from sklearn.model_selection import train_test_split
 
 from instgram_fake_account_detector.config import MODEL_PATH, PROFILE_DATA_PATH
 
-# ==============================
-# LOAD DATASET
-# ==============================
-
 with PROFILE_DATA_PATH.open("r", encoding="utf-8") as f:
     raw = json.load(f)
 
@@ -26,10 +22,6 @@ with PROFILE_DATA_PATH.open("r", encoding="utf-8") as f:
 df = pd.DataFrame(raw.values())
 
 print(f"Loaded {len(df)} profiles")
-
-# ==============================
-# REQUIRED COLUMNS
-# ==============================
 
 string_cols = [
     "username",
@@ -64,10 +56,6 @@ for col in bool_cols:
     if col not in df.columns:
         df[col] = False
 
-# ==============================
-# CLEAN DATA
-# ==============================
-
 for col in numeric_cols:
     df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
@@ -76,41 +64,23 @@ df["is_verified"] = df["is_verified"].fillna(False).astype(int)
 
 df["has_profile_pic"] = df["profile_pic_url"].notna().astype(int)
 
-# ==============================
-# FEATURE ENGINEERING
-# ==============================
+df["follower_followee_ratio"] = df["followers"] / (df["followees"] + 1)
 
-df["follower_followee_ratio"] = (
-    df["followers"] / (df["followees"] + 1)
-)
+df["media_per_follower"] = df["mediacount"] / (df["followers"] + 1)
 
-df["media_per_follower"] = (
-    df["mediacount"] / (df["followers"] + 1)
-)
+df["followee_per_media"] = df["followees"] / (df["mediacount"] + 1)
 
-df["followee_per_media"] = (
-    df["followees"] / (df["mediacount"] + 1)
-)
+df["username_length"] = df["username"].astype(str).str.len()
 
-df["username_length"] = (
-    df["username"].astype(str).str.len()
-)
+df["full_name_length"] = df["full_name"].astype(str).str.len()
 
-df["full_name_length"] = (
-    df["full_name"].astype(str).str.len()
-)
-
-df["biography_length"] = (
-    df["biography"].astype(str).str.len()
-)
+df["biography_length"] = df["biography"].astype(str).str.len()
 
 df["has_external_url"] = (
     df["external_url"].fillna("").astype(str).str.len() > 0
 ).astype(int)
 
-df["username_digit_count"] = (
-    df["username"].astype(str).str.count(r"\d")
-)
+df["username_digit_count"] = df["username"].astype(str).str.count(r"\d")
 
 df["log_followers"] = np.log1p(df["followers"])
 df["log_followees"] = np.log1p(df["followees"])
@@ -138,24 +108,12 @@ FEATURE_COLS = [
     "log_mediacount",
 ]
 
-# ==============================
-# LABEL
-# ==============================
-
 df["is_fake"] = (
-    df["is_fake"]
-    .astype(str)
-    .str.strip()
-    .replace({"true": 1, "false": 0})
-    .astype(int)
+    df["is_fake"].astype(str).str.strip().replace({"true": 1, "false": 0}).astype(int)
 )
 
 X = df[FEATURE_COLS].fillna(0)
 y = df["is_fake"]
-
-# ==============================
-# TRAIN TEST SPLIT
-# ==============================
 
 X_train, X_test, y_train, y_test = train_test_split(
     X,
@@ -164,10 +122,6 @@ X_train, X_test, y_train, y_test = train_test_split(
     random_state=42,
     stratify=y,
 )
-
-# ==============================
-# TRAIN MODEL
-# ==============================
 
 model = xgb.XGBClassifier(
     n_estimators=300,
@@ -182,10 +136,6 @@ model = xgb.XGBClassifier(
 
 model.fit(X_train, y_train)
 
-# ==============================
-# EVALUATE
-# ==============================
-
 pred = model.predict(X_test)
 prob = model.predict_proba(X_test)[:, 1]
 
@@ -199,10 +149,6 @@ print("ROC AUC  :", roc_auc_score(y_test, prob))
 
 print("\nConfusion Matrix")
 print(confusion_matrix(y_test, pred))
-
-# ==============================
-# SAVE MODEL
-# ==============================
 
 model.get_booster().save_model(str(MODEL_PATH))
 

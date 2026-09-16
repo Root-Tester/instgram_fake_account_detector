@@ -1,13 +1,12 @@
-from pathlib import Path
+from functools import lru_cache
 import xgboost as xgb
-import streamlit as st
 from instgram_fake_account_detector.config import MODEL_PATH
 
-@st.cache_resource
+
+@lru_cache(maxsize=1)
 def load_model():
     if not MODEL_PATH.exists():
-        st.error(f"Model not found: {MODEL_PATH}")
-        st.stop()
+        raise FileNotFoundError(f"Model not found: {MODEL_PATH}")
 
     model = xgb.Booster()
     model.load_model(str(MODEL_PATH))

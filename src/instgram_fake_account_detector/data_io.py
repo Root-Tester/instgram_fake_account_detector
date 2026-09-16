@@ -12,7 +12,9 @@ def load_json_from_text(text: str) -> Any:
 def normalize_profiles(payload: Any) -> list[dict]:
     if isinstance(payload, dict):
         return [payload]
-    if isinstance(payload, list) and all(isinstance(profile, dict) for profile in payload):
+    if isinstance(payload, list) and all(
+        isinstance(profile, dict) for profile in payload
+    ):
         if not payload:
             raise ValueError("JSON array must contain at least one profile object.")
         return payload

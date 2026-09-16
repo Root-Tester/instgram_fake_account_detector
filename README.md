@@ -1,14 +1,14 @@
 # Instagram Fake Account Detector: AI-Powered Profile and Post Analysis
 
-> Open-source Streamlit toolkit for Instagram fake-account detection, post-content analysis, scam-risk triage, and explainable evidence review.
+> Open-source React and FastAPI toolkit for Instagram fake-account detection, post-content analysis, scam-risk triage, and explainable evidence review.
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
-![Streamlit](https://img.shields.io/badge/Streamlit-app-FF4B4B?logo=streamlit&logoColor=white)
+![React](https://img.shields.io/badge/React%20%2B%20FastAPI-app-61DAFB?logo=react&logoColor=white)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**Topics:** Instagram fake account detector, fake post detection, scam detection, bot detection, content analysis, reverse image search, blockchain tracing, supervised learning, unsupervised learning, Streamlit.
+**Topics:** Instagram fake account detector, fake post detection, scam detection, bot detection, content analysis, reverse image search, blockchain tracing, supervised learning, unsupervised learning, React, FastAPI.
 
-This project is a Streamlit-based application that predicts whether an Instagram profile looks fake or real using a trained XGBoost model.
+This project provides a lightweight React frontend and Python FastAPI backend that predict whether an Instagram profile looks fake or real using a trained XGBoost model.
 
 The detector uses metadata such as:
 - follower and following counts
@@ -45,15 +45,59 @@ It is designed as a lightweight batch-analysis tool for reviewing one or many pr
 
 ## Project structure
 
-- **Frontend:** `src/instgram_fake_account_detector/streamlit_app.py`, `ui.py` — Streamlit tabs, forms, and result views.
+- **Frontend:** `frontend/` — lightweight Vite/React TypeScript client.
+- **API:** `src/instgram_fake_account_detector/api.py` — typed FastAPI routes for health, profile, batch, post, and validated media delivery.
 - **Backend analysis:** `src/instgram_fake_account_detector/predictor.py`, `advanced_analysis.py`, `post_analysis.py`, `validators.py`, `data_io.py` — feature extraction, evidence scoring, and public research.
 - **Models:** `src/instgram_fake_account_detector/model_loader.py`, `post_model.py`, `models/` — supervised model loading and inference.
 - **Training:** `scripts/train_profile_model.py`, `scripts/train_post_model.py`, `scripts/generate_post_dataset.py` — reproducible model and dataset workflows.
 - **Data:** `data/profiles/`, `data/posts/`; examples live in `examples/`.
 - **Integration:** `sdk.py`, `n8n/` — programmatic access and optional automation.
-- **Runtime:** `run_app.sh`, `requirements.txt`, `requirements-dev.txt` — local deployment and dependencies.
+- **Runtime:** `run_api.sh`, `requirements.txt`, `requirements-dev.txt` — local deployment and dependencies.
 
-The root `app.py` and `sdk.py` files are compatibility shims. The categorized package under `src/` is the maintained implementation.
+The root `sdk.py` file is a compatibility shim. The categorized package under `src/` is the maintained implementation.
+
+## React and FastAPI development
+
+Start the API:
+
+```bash
+bash run_api.sh
+```
+
+Start the lightweight frontend in another terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The Vite development server proxies `/api` requests to `http://localhost:8000`.
+The post-analysis API validates and caches public image bytes before exposing a
+tokenized `/api/v1/media/` reference, so login pages, logos, and HTML responses
+are not rendered as post images.
+
+The React frontend is the only UI. The Python package remains available through
+the FastAPI API and SDK.
+
+## Render deployment
+
+The repository is configured as two Render services in [render.yaml](./render.yaml):
+
+1. A Python web service named `instagram-fake-account-detector-api`.
+   Render installs `requirements.txt`, runs `bash run_api.sh`, and checks
+   `/health`.
+2. A static site named `instagram-fake-account-detector-frontend`.
+   Render runs `npm ci && npm run build` from `frontend/` and publishes `dist/`.
+
+Create a Render Blueprint from the repository and apply `render.yaml`. If Render
+assigns different service URLs, update `FRONTEND_ORIGINS` on the API service and
+`VITE_API_BASE_URL` on the frontend service to match those URLs, then redeploy
+both services. Do not put API keys in the frontend environment because Vite
+embeds `VITE_*` values into browser assets.
+
+The frontend and backend are intentionally separate deployments. The frontend
+calls the backend over HTTPS; it does not run Python or model inference.
 
 ## How it works
 
@@ -65,29 +109,28 @@ The root `app.py` and `sdk.py` files are compatibility shims. The categorized pa
 
 ## Run the app
 
-From the project directory:
+Start the API from the project directory:
 
 ```bash
 cd /workspaces/instgram_fake_account_detector
-bash run_app.sh
+bash run_api.sh
 ```
 
-Open the browser at:
+Open the frontend at:
 
 ```text
-http://127.0.0.1:8501
+http://127.0.0.1:5173
 ```
 
-`run_app.sh` binds to `0.0.0.0` and uses the `PORT` environment variable when
-provided by a host such as Render. It falls back to port `8501` for local use.
-The included `render.yaml` configures Render to install dependencies and start
-the same launcher.
+`run_api.sh` binds to `0.0.0.0` and uses the `PORT` environment variable when
+provided by a host such as Render. The included `render.yaml` deploys the API
+and React static site separately.
 
 For a configuration-driven Bash launch:
 
 ```bash
 cp .env.example .env
-bash run_app.sh
+bash run_api.sh
 ```
 
 Do not commit `.env`, API keys, private datasets, or user uploads. See [SECURITY.md](SECURITY.md).
@@ -152,7 +195,7 @@ Array of profiles:
 
 ## Advanced analysis input
 
-Optional fields can be added to any profile. `image_bytes` may contain base64-encoded image data, while the Streamlit app can attach local image uploads automatically. Reverse-image evidence can be supplied by a trusted integration:
+Optional fields can be added to any profile. `image_bytes` may contain base64-encoded image data. Reverse-image evidence can be supplied by a trusted integration:
 
 ```json
 {
@@ -198,6 +241,24 @@ result = sdk.predict_profile(profile)
 print(result)
 ```
 
+To call the Render-hosted backend instead of loading the model locally:
+
+```python
+from sdk import FakeProfileDetectorSDK
+
+sdk = FakeProfileDetectorSDK(
+    api_base_url="https://instagram-fake-account-detector-api.onrender.com"
+)
+print(sdk.health())
+result = sdk.predict_profile(profile)
+post_report = sdk.analyze_post("https://www.instagram.com/p/example/")
+```
+
+The SDK is a Python client for the backend; it does not bundle or serve the
+React frontend. The browser frontend and the SDK use the same FastAPI routes,
+so profile, batch, post, and health behavior stays consistent across local and
+Render deployments.
+
 Batch prediction:
 
 ```python
@@ -216,10 +277,13 @@ print(results)
 ## SDK API
 
 ### `FakeProfileDetectorSDK(model_path: str | None = None)`
+
 Creates the detector SDK and loads the model from the default project model file unless a custom path is supplied.
 
 ### `predict_profile(profile: dict) -> dict`
+
 Returns a single prediction object with supervised and advanced fields:
+
 - `probability_fake`
 - `is_fake`
 - `confidence`

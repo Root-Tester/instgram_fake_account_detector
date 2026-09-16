@@ -55,7 +55,9 @@ def generate_dataset(output: str | Path, rows: int = 50_000, seed: int = 42) -> 
         for index in range(rows):
             label = index % 2
             templates = FAKE_TEMPLATES if label else REAL_TEMPLATES
-            text = random_generator.choice(templates) + random_generator.choice(MODIFIERS)
+            text = random_generator.choice(templates) + random_generator.choice(
+                MODIFIERS
+            )
             row = {
                 "id": f"synthetic-{index + 1:06d}",
                 "text": text,
@@ -70,7 +72,9 @@ def generate_dataset(output: str | Path, rows: int = 50_000, seed: int = 42) -> 
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Generate synthetic labeled post text data.")
+    parser = argparse.ArgumentParser(
+        description="Generate synthetic labeled post text data."
+    )
     parser.add_argument("--output", default="data/posts/post_training_dataset.jsonl")
     parser.add_argument("--rows", type=int, default=50_000)
     parser.add_argument("--seed", type=int, default=42)

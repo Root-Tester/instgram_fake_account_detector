@@ -1,4 +1,9 @@
-from instgram_fake_account_detector.advanced_analysis import analyze_image, analyze_network, analyze_profiles, analyze_reverse_image
+from instgram_fake_account_detector.advanced_analysis import (
+    analyze_image,
+    analyze_network,
+    analyze_profiles,
+    analyze_reverse_image,
+)
 from instgram_fake_account_detector.model_loader import load_model
 
 

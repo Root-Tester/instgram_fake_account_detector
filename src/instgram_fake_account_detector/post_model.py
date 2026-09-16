@@ -27,10 +27,26 @@ def normalize_post_label(value: Any) -> int:
 
 
 def build_post_model() -> Pipeline:
-    return Pipeline([
-        ("tfidf", TfidfVectorizer(lowercase=True, strip_accents="unicode", ngram_range=(1, 2), min_df=2, max_features=50000)),
-        ("classifier", LogisticRegression(max_iter=1000, class_weight="balanced", random_state=42)),
-    ])
+    return Pipeline(
+        [
+            (
+                "tfidf",
+                TfidfVectorizer(
+                    lowercase=True,
+                    strip_accents="unicode",
+                    ngram_range=(1, 2),
+                    min_df=2,
+                    max_features=50000,
+                ),
+            ),
+            (
+                "classifier",
+                LogisticRegression(
+                    max_iter=1000, class_weight="balanced", random_state=42
+                ),
+            ),
+        ]
+    )
 
 
 def save_post_model(model: Pipeline, path: str | Path = POST_MODEL_PATH) -> None:

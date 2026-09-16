@@ -1,0 +1,14 @@
+{
+  "username": "sample_user",
+  "full_name": "Sample User",
+  "biography": "This account has a real profile and a short biography.",
+  "external_url": "https://example.com",
+  "profile_pic_url": "https://example.com/profile.jpg",
+  "followers": 150,
+  "followees": 180,
+  "mediacount": 25,
+  "posts_count": 25,
+  "stories_count": 3,
+  "is_private": false,
+  "is_verified": false
+}

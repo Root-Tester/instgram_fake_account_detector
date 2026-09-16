@@ -1,11 +1,23 @@
 services:
   - type: web
-    name: instagram-fake-account-detector
+    name: instagram-fake-account-detector-api
     runtime: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: bash run_app.sh
-    healthCheckPath: /_stcore/health
+    startCommand: bash run_api.sh
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: "3.13.0"
+      - key: FRONTEND_ORIGINS
+        value: https://instagram-fake-account-detector-frontend.onrender.com
+
+  # The React client is deployed separately so it can call the API directly.
+  - type: static
+    name: instagram-fake-account-detector-frontend
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://instagram-fake-account-detector-api.onrender.com

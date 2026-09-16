@@ -15,7 +15,13 @@ PROFILE_EXAMPLE = {
     "is_verified": False,
 }
 
-NUMERIC_FIELDS = ["followers", "followees", "mediacount", "posts_count", "stories_count"]
+NUMERIC_FIELDS = [
+    "followers",
+    "followees",
+    "mediacount",
+    "posts_count",
+    "stories_count",
+]
 BOOLEAN_FIELDS = ["is_private", "is_verified"]
 
 
@@ -48,19 +54,40 @@ def validate_profile_data(profile_data: Any) -> Tuple[List[str], List[str]]:
         return errors, warnings
 
     if not str(profile_data.get("username", "")).strip():
-        warnings.append("Missing or empty username. The prediction will continue with a placeholder username.")
+        warnings.append(
+            "Missing or empty username. The prediction will continue with a placeholder username."
+        )
 
     for field in NUMERIC_FIELDS:
-        if field not in profile_data or profile_data[field] is None or profile_data[field] == "":
-            warnings.append(f"Field `{field}` is missing or empty and will default to 0.")
+        if (
+            field not in profile_data
+            or profile_data[field] is None
+            or profile_data[field] == ""
+        ):
+            warnings.append(
+                f"Field `{field}` is missing or empty and will default to 0."
+            )
         elif not is_numeric(profile_data[field]):
-            warnings.append(f"Field `{field}` is not numeric and will be converted to 0.")
+            warnings.append(
+                f"Field `{field}` is not numeric and will be converted to 0."
+            )
 
     for field in BOOLEAN_FIELDS:
         value = profile_data.get(field)
         if value is None or value == "":
             warnings.append(f"Field `{field}` is missing and will default to False.")
-        elif isinstance(value, str) and value.strip().lower() not in {"true", "false", "1", "0", "yes", "no", "y", "n"}:
-            warnings.append(f"Field `{field}` has an unrecognized boolean value and will default to False.")
+        elif isinstance(value, str) and value.strip().lower() not in {
+            "true",
+            "false",
+            "1",
+            "0",
+            "yes",
+            "no",
+            "y",
+            "n",
+        }:
+            warnings.append(
+                f"Field `{field}` has an unrecognized boolean value and will default to False."
+            )
 
     return errors, warnings

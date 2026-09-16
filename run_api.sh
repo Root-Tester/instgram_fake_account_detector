@@ -15,7 +15,6 @@ if [[ -x .venv/bin/python && -z "${PYTHON_BIN_OVERRIDE:-}" ]]; then
 	PYTHON_BIN=".venv/bin/python"
 fi
 
-exec "$PYTHON_BIN" -m streamlit run src/instgram_fake_account_detector/streamlit_app.py \
-	--server.headless "${STREAMLIT_HEADLESS:-true}" \
-	--server.address "${HOST:-0.0.0.0}" \
-	--server.port "${PORT:-8501}"
+exec "$PYTHON_BIN" -m uvicorn instgram_fake_account_detector.api:app \
+	--host "${HOST:-0.0.0.0}" \
+	--port "${PORT:-8000}"
