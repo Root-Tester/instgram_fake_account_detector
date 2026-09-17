@@ -344,3 +344,187 @@ Because of that, results are best treated as a heuristic signal rather than a de
 ## Model notes
 
 The project includes a training script that evaluates the model on a held-out dataset. The reported in-sample validation metrics are very high, but they do not guarantee equivalent performance on fresh real-world Instagram accounts outside the same data distribution.
+
+
+
+================================================
+FILE: LICENSE
+================================================
+MIT License
+
+Copyright (c) 2026 Tushar Kumar 
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+
+================================================
+FILE: render.yaml
+================================================
+# One web service builds and serves both the frontend and API on Render's dynamic PORT.
+services:
+  - type: web
+    name: instagram-fake-account-detector-api
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r backend/requirements.txt && npm ci --prefix frontend && npm run build --prefix frontend
+    startCommand: bash run_api.sh
+    healthCheckPath: /ready
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.0"
+      - key: FRONTEND_ORIGINS
+        value: https://instagram-fake-account-detector-frontend.onrender.com
+      - key: ENVIRONMENT
+        value: production
+      - key: REQUIRE_API_KEY
+        value: "true"
+      - key: API_KEYS
+        sync: false
+      - key: RATE_LIMIT_REQUESTS
+        value: "120"
+      - key: RATE_LIMIT_WINDOW_SECONDS
+        value: "60"
+      - key: MAX_REQUEST_BYTES
+        value: "262144"
+      - key: VITE_API_KEY
+        sync: false
+
+
+
+================================================
+FILE: run_api.sh
+================================================
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")"
+export PYTHONPATH="$PWD/backend/app${PYTHONPATH:+:$PYTHONPATH}"
+
+if [[ -f .env ]]; then
+	set -a
+	. ./.env
+	set +a
+fi
+
+PYTHON_BIN="${PYTHON_BIN:-python}"
+if [[ -x .venv/bin/python && -z "${PYTHON_BIN_OVERRIDE:-}" ]]; then
+	PYTHON_BIN=".venv/bin/python"
+fi
+
+exec "$PYTHON_BIN" -m uvicorn backend.app.main:app \
+	--host "${HOST:-0.0.0.0}" \
+	--port "${PORT:-8000}"
+
+
+
+================================================
+FILE: run_dev.sh
+================================================
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BACKEND_PID=""
+FRONTEND_PID=""
+
+cleanup() {
+  trap - INT TERM EXIT
+  if [[ -n "$FRONTEND_PID" ]] && kill -0 "$FRONTEND_PID" 2>/dev/null; then
+    kill "$FRONTEND_PID" 2>/dev/null || true
+  fi
+  if [[ -n "$BACKEND_PID" ]] && kill -0 "$BACKEND_PID" 2>/dev/null; then
+    kill "$BACKEND_PID" 2>/dev/null || true
+  fi
+  wait "$FRONTEND_PID" "$BACKEND_PID" 2>/dev/null || true
+}
+
+trap cleanup INT TERM EXIT
+
+cd "$ROOT_DIR"
+bash run_api.sh &
+BACKEND_PID=$!
+
+(
+  cd "$ROOT_DIR/frontend"
+  exec npm run dev
+) &
+FRONTEND_PID=$!
+
+wait -n "$BACKEND_PID" "$FRONTEND_PID"
+exit $?
+
+
+
+================================================
+FILE: sdk.py
+================================================
+"""Compatibility import for the packaged SDK."""
+
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent / "backend" / "app"))
+
+from instgram_fake_account_detector.sdk import FakeProfileDetectorSDK
+
+__all__ = ["FakeProfileDetectorSDK"]
+
+
+
+================================================
+FILE: SECURITY.md
+================================================
+# Security Policy
+
+## Scope
+
+This project is an evidence-ranking research tool. It does not bypass Instagram access controls, identify private account owners, or prove fraud or image provenance.
+
+## Secrets and private data
+
+Store API keys and deployment credentials in environment variables or the hosting provider's secret manager. Never commit `.env`, wallet credentials, private datasets, user uploads, or raw investigative reports. The repository `.gitignore` excludes common local secret and runtime paths.
+
+The public model and synthetic training data are not secret. Removing Python files from a public repository does not hide source code; use a private repository and a private build/deployment pipeline when source confidentiality is required.
+
+Production deployments should set `ENVIRONMENT=production`,
+`REQUIRE_API_KEY=true`, and store `API_KEYS` in the hosting provider's secret
+manager. Do not treat `VITE_API_KEY` as a confidential credential: Vite embeds
+it in browser assets. Use a private frontend or an authenticated gateway when
+the client must not expose a shared browser token.
+
+## Online research safety
+
+Only analyze public URLs that the provider makes available without login. Keep requests bounded, respect provider terms, and review search results manually. Wallet explorer links are leads, not identity attribution.
+
+## Reporting a vulnerability
+
+Do not publish credentials or exploitable details in a public issue. Contact the repository owner privately through GitHub with reproduction steps, impact, and a proposed mitigation.
+
+
+================================================
+FILE: .env.example
+================================================
+# Runtime configuration
+HOST=0.0.0.0
+PORT=8000
+PYTHON_BIN=python
+
+# API browser access. Use comma-separated exact origins; do not use "*".
+CORS_ORIG
